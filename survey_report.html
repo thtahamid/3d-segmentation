@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Segmentation & Explainability Survey Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #0891b2;
+            --accent: #f59e0b;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            --card-hover: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8f4f8 50%, #fef3c7 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--dark) 0%, #1e293b 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .header-content { position: relative; max-width: 900px; margin: 0 auto; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .header h1 span { color: var(--primary-light); }
+        .header .subtitle { font-size: 1.1rem; color: #94a3b8; margin-bottom: 1.5rem; }
+        .header-meta { display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; }
+        .meta-item { background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 2rem; font-size: 0.85rem; }
+        .meta-item strong { color: var(--accent); }
+
+        /* Navigation */
+        .nav-container {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--card-shadow);
+        }
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.25rem;
+            padding: 0.5rem 1rem;
+            overflow-x: auto;
+        }
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--gray);
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .nav-tab:hover { background: #f1f5f9; color: var(--dark); }
+        .nav-tab.active { background: var(--primary); color: white; }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid #e2e8f0;
+            transition: box-shadow 0.2s;
+        }
+        .card:hover { box-shadow: var(--card-hover); }
+        .card h2 { font-size: 1.5rem; margin-bottom: 1rem; color: var(--dark); display: flex; align-items: center; gap: 0.5rem; }
+        .card h3 { font-size: 1.15rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .card h4 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+        .card p { color: #475569; line-height: 1.7; margin-bottom: 1rem; }
+
+        /* Section headers */
+        .section-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .bg-blue { background: #e0e7ff; }
+        .bg-cyan { background: #cffafe; }
+        .bg-amber { background: #fef3c7; }
+        .bg-rose { background: #ffe4e6; }
+        .bg-emerald { background: #d1fae5; }
+
+        /* Grid layouts */
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+
+        /* Model Card */
+        .model-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            transition: all 0.2s;
+        }
+        .model-card:hover { border-color: var(--primary); box-shadow: var(--card-hover); }
+        .model-card h3 { margin-top: 0; font-size: 1rem; }
+        .model-card .paper-link {
+            font-size: 0.8rem;
+            color: var(--primary);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .model-card .paper-link:hover { text-decoration: underline; }
+        .model-card .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+        .keyword-tag {
+            font-size: 0.7rem;
+            background: #f1f5f9;
+            padding: 0.15rem 0.5rem;
+            border-radius: 1rem;
+            color: var(--gray);
+        }
+        .date-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 0.1rem 0.5rem;
+            border-radius: 1rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Timeline */
+        .timeline { position: relative; padding-left: 2rem; }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary), var(--accent));
+            border-radius: 2px;
+        }
+        .timeline-item { position: relative; margin-bottom: 2rem; }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -1.75rem;
+            top: 0.5rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 3px solid white;
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+        .timeline-item.specialized::before { background: var(--secondary); box-shadow: 0 0 0 2px var(--secondary); }
+        .timeline-item.medical::before { background: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+        .timeline-item.xai::before { background: var(--success); box-shadow: 0 0 0 2px var(--success); }
+        .timeline-date { font-size: 0.8rem; color: var(--gray); font-weight: 600; }
+        .timeline-item h4 { margin: 0.25rem 0; font-size: 0.95rem; }
+        .timeline-item p { font-size: 0.85rem; color: #475569; }
+
+        /* Charts */
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .chart-container.small { height: 250px; }
+
+        /* Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            display: block;
+        }
+        .data-table th {
+            background: #f1f5f9;
+            padding: 0.75rem 0.5rem;
+            text-align: left;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .data-table td {
+            padding: 0.75rem 0.5rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .data-table tr:hover { background: #f8fafc; }
+
+        /* Category badges */
+        .cat-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.6rem;
+            border-radius: 1rem;
+            font-weight: 600;
+        }
+        .cat-foundation { background: #e0e7ff; color: #3730a3; }
+        .cat-medical { background: #fef3c7; color: #92400e; }
+        .cat-specialized { background: #cffafe; color: #155e75; }
+        .cat-xai { background: #d1fae5; color: #065f46; }
+
+        /* Summary boxes */
+        .summary-box {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .summary-stat {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            text-align: center;
+            box-shadow: var(--card-shadow);
+            border: 1px solid #e2e8f0;
+        }
+        .summary-stat .stat-number { font-size: 2rem; font-weight: 700; color: var(--primary); }
+        .summary-stat .stat-label { font-size: 0.8rem; color: var(--gray); margin-top: 0.25rem; }
+        .summary-stat:nth-child(2) .stat-number { color: var(--secondary); }
+        .summary-stat:nth-child(3) .stat-number { color: var(--accent); }
+        .summary-stat:nth-child(4) .stat-number { color: var(--success); }
+
+        /* Navigation arrows */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        .nav-btn {
+            padding: 0.6rem 1.5rem;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--gray);
+            transition: all 0.2s;
+        }
+        .nav-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray);
+            font-size: 0.85rem;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 3rem;
+        }
+        .footer a { color: var(--primary); text-decoration: none; }
+
+        /* SVG diagrams */
+        .diagram-container {
+            background: #f8fafc;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.5rem; }
+            .nav-tab { padding: 0.5rem 1rem; font-size: 0.8rem; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
+
+        /* Highlight box */
+        .highlight-box {
+            border-left: 4px solid var(--primary);
+            background: #f0f4ff;
+            padding: 1rem 1.25rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+            margin: 1rem 0;
+        }
+        .highlight-box.warning { border-color: var(--accent); background: #fffbeb; }
+        .highlight-box.success { border-color: var(--success); background: #ecfdf5; }
+        .highlight-box.info { border-color: var(--secondary); background: #ecfeff; }
+
+        /* Citation style */
+        .citation {
+            font-size: 0.8rem;
+            color: var(--gray);
+            background: #f8fafc;
+            padding: 0.75rem 1rem;
+            border-left: 3px solid var(--primary);
+            border-radius: 0 0.5rem 0.5rem 0;
+            margin: 0.5rem 0;
+        }
+
+        /* Flow chart */
+        .flow-chart {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 1rem;
+        }
+        .flow-item {
+            background: white;
+            border: 2px solid var(--primary);
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+        }
+        .flow-arrow { font-size: 1.5rem; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<!-- ==================== HEADER ==================== -->
+<div class="header">
+    <div class="header-content">
+        <h1>3D Segmentation & <span>Explainable AI</span> Survey</h1>
+        <p class="subtitle">A comprehensive survey of new 3D segmentation models, vision foundation models, and XAI methods for 3D medical/scientific imaging</p>
+        <div class="header-meta">
+            <div class="meta-item">📊 <strong>18+</strong> Models Surveyed</div>
+            <div class="meta-item">🧠 <strong>12+</strong> XAI Techniques</div>
+            <div class="meta-item">🏥 Covers <strong>Medical</strong>, <strong>Point Cloud</strong>, <strong>Microscopy</strong></div>
+            <div class="meta-item">📅 Updated <strong>July 2026</strong></div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== NAVIGATION ==================== -->
+<div class="nav-container">
+    <div class="nav-tabs" id="navTabs">
+        <button class="nav-tab active" onclick="showTab('overview')">🏠 Overview</button>
+        <button class="nav-tab" onclick="showTab('foundation')">🌐 Foundation Models</button>
+        <button class="nav-tab" onclick="showTab('medical')">🏥 Medical 3D</button>
+        <button class="nav-tab" onclick="showTab('pointcloud')">☁️ Point Cloud & Specialized</button>
+        <button class="nav-tab" onclick="showTab('microscopy')">🔬 Microscopy & micro-sam</button>
+        <button class="nav-tab" onclick="showTab('xai')">💡 Explainable AI</button>
+        <button class="nav-tab" onclick="showTab('timeline')">📅 Timeline</button>
+    </div>
+</div>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<div class="main-content">
+
+    <!-- ========== OVERVIEW TAB ========== -->
+    <div class="tab-content active" id="tab-overview">
+        <div class="summary-box">
+            <div class="summary-stat">
+                <div class="stat-number">18+</div>
+                <div class="stat-label">3D Segmentation Models</div>
+            </div>
+            <div class="summary-stat">
+                <div class="stat-number">12+</div>
+                <div class="stat-label">XAI / Interpretability Methods</div>
+            </div>
+            <div class="summary-stat">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Application Domains</div>
+            </div>
+            <div class="summary-stat">
+                <div class="stat-number">2024-26</div>
+                <div class="stat-label">Publication Range</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="section-icon bg-blue">📋</span> Survey Scope</h2>
+            <p>This report surveys the latest advances in 3D segmentation across three major axes:</p>
+            <div class="flow-chart">
+                <div class="flow-item">🧬 Medical<br/>3D Imaging</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">🌐 Foundation<br/>Models</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">💡 Explainable<br/>AI</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">🧠 Clinical<br/>Trust</div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h3><span class="section-icon bg-blue" style="font-size:1rem;">🌐</span> Foundation 3D Models</h3>
+                <p>Models pre-trained on large-scale 3D datasets that serve as universal backbones for downstream segmentation tasks. Includes SAM3D (Meta), PonderV2, VISTA3D, MedDINOv3, CT-FM, and Triad. These models aim to generalize across anatomy, imaging modality, and downstream task.</p>
+            </div>
+            <div class="card">
+                <h3><span class="section-icon bg-amber" style="font-size:1rem;">🏥</span> Medical 3D Segmentation</h3>
+                <p>Specialized and promptable models for volumetric medical images (CT, MRI). SAM-Med3D achieves zero-shot anatomical segmentation with just 1-2 prompt points. VISTA3D leads with 127-class SOTA. CNN-based models still dominate (BrainFM4Challenges).</p>
+            </div>
+            <div class="card">
+                <h3><span class="section-icon bg-cyan" style="font-size:1rem;">☁️</span> Point Cloud & Specialized</h3>
+                <p>Beyond medical: Mask3D (Transformer instance segmentation), Point-SAM (promptable), SAM2Point (zero-shot via video), SAM3D (2D→3D projection), GPT4Point (MLLM reasoning). Used in robotics, LiDAR, autonomous driving.</p>
+            </div>
+            <div class="card">
+                <h3><span class="section-icon bg-emerald" style="font-size:1rem;">💡</span> Explainable AI for 3D</h3>
+                <p>Making black-box 3D models interpretable: Agg²Exp (voxel attributions), Grad-CAM variants, FBI (point clouds), Causal XAI, XAI-CLIP, TorchEsegeta. Critical for clinical trust and debugging.</p>
+            </div>
+        </div>
+
+        <!-- Pie chart -->
+        <div class="card">
+            <h3>Distribution of Models by Application Domain</h3>
+            <div class="chart-container">
+                <canvas id="domainChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== FOUNDATION MODELS TAB ========== -->
+    <div class="tab-content" id="tab-foundation">
+        <div class="card">
+            <h2><span class="section-icon bg-blue">🌐</span> Vision Foundation Models for 3D</h2>
+            <p>Foundation models for 3D are a rapidly emerging class that promises universal feature representations applicable to diverse downstream tasks (segmentation, classification, reconstruction). Unlike task-specific 3D models, they leverage large-scale pre-training and zero-shot generalization.</p>
+        </div>
+
+        <div class="grid-2">
+            <div class="model-card">
+                <div class="date-badge">Jun 2024</div>
+                <h3><a href="https://github.com/Project-MONAI/VISTA" class="paper-link" target="_blank">VISTA3D ↗</a></h3>
+                <p><strong>Versatile Imaging SegmenTation and Annotation model</strong> — First model to achieve SOTA in both 3D automatic (127 classes) and interactive 3D segmentation. Novel 3D supervoxel method distills 2D pre-trained backbones.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <div class="keywords"><span class="keyword-tag">3D seg</span><span class="keyword-tag">Zero-shot</span><span class="keyword-tag"> interactive</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Oct 2023</div>
+                <h3><a href="https://github.com/OpenGVLab/PonderV2" class="paper-link" target="_blank">PonderV2 ↗</a></h3>
+                <p>Universal pre-training for 3D foundation models via differentiable neural rendering. SOTA on 11 indoor/outdoor benchmarks for 3D detection, segmentation, reconstruction.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <div class="keywords"><span class="keyword-tag">Neural Rendering</span><span class="keyword-tag"> SSL</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jan 2025</div>
+                <h3><a href="https://github.com/surajpaib/CTFM" class="paper-link" target="_blank">CT-FM ↗</a></h3>
+                <p>Large-scale 3D foundation model for CT radiology. Pre-trained on 148,000 CT scans via contrastive learning. SOTA in whole-body segmentation, tumor segmentation, image retrieval.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">Contrastive</span><span class="keyword-tag"> 148K scans</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Sep 2025</div>
+                <h3><a href="https://github.com/ricklisz/MedDINOv3" class="paper-link" target="_blank">MedDINOv3 ↗</a></h3>
+                <p>Adapts DINOv3 for medical imaging. Multi-scale token aggregation architecture. Domain-adaptive pretraining on 3.87M axial CT slices. SOTA across 4 segmentation benchmarks.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">ViT backbone</span><span class="keyword-tag"> DINOv3</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Feb 2025</div>
+                <h3><a href="#" class="paper-link" target="_blank">Triad (MRI Foundation)</a></h3>
+                <p>Vision foundation model for 3D MRI. Autoencoder trained on 131K MRI volumes — largest 3D MRI pre-training dataset. +2.51% segmentation, +3.97% classification gains.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">MRI</span><span class="keyword-tag"> Autoencoder</span><span class="keyword-tag"> 131K volumes</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Aug 2023</div>
+                <h3><a href="https://github.com/chaoyi-wu/RadFM" class="paper-link" target="_blank">RadFM ↗</a></h3>
+                <p>First multi-modal radiology foundation model. Processes 16M 2D/3D scans with interleaved text-visual generation. Five eval tasks including detection & segmentation.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">Multimodal</span><span class="keyword-tag"> VL understanding</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Dec 2025</div>
+                <h3><a href="#" class="paper-link" target="_blank">LoRA3D ↗</a></h3>
+                <p>Low-rank self-calibration for 3D geometric foundation models (DUSt3R, etc.). Self-calibrates to target scenes using multi-view predictions. +88% improvement reconstruction, runs in 5min on 1 GPU.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <div class="keywords"><span class="keyword-tag">LoRA</span><span class="keyword-tag"> Self-calibration</span><span class="keyword-tag"> 3D recon</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Foundation Model Landscape - Publication Year Distribution</h3>
+            <div class="chart-container small">
+                <canvas id="foundationChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MEDICAL 3D TAB ========== -->
+    <div class="tab-content" id="tab-medical">
+        <div class="card">
+            <h2><span class="section-icon bg-amber">🏥</span> Medical 3D Segmentation Models</h2>
+            <p>Volumetric medical image segmentation (CT, MRI, PET) has been revolutionized by SAM-based adaptations. Key trends: (1) promptable SAM-Med3D for interactive workflows, (2) CNN-based models still winning challenges (BrainFM), (3) large-scale anatomical segmentation (CADS 167 structures), (4) domain-adaptive vision transformers (MedDINOv3).</p>
+        </div>
+
+        <div class="grid-2">
+            <div class="model-card">
+                <div class="date-badge">Oct 2023</div>
+                <h3><a href="https://github.com/uni-medical/SAM-Med3D" class="paper-link" target="_blank">SAM-Med3D ↗</a></h3>
+                <p>Promptable general-purpose volumetric medical segmentation. Fully learnable 3D structure, trained on SA-Med3D-140K (22K images, 143K masks). 16-dataset evaluation with zero-shot transferability.</p>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">Promptable</span><span class="keyword-tag"> Zero-shot</span><span class="keyword-tag"> 140K masks</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Apr 2023</div>
+                <h3><a href="https://github.com/KidsWithTokens/Medical-SAM-Adapter" class="paper-link" target="_blank">Medical SAM Adapter ↗</a></h3>
+                <p>Parameter-efficient SAM adaptation for medical images. Space-Depth Transpose for 3D, Hyper-Prompting Adapter. Only 2% parameters updated. SOTA on 17 medical tasks.</p>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">PEFT</span><span class="keyword-tag"> SAM adapter</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jul 2025</div>
+                <h3><a href="#" class="paper-link" target="_blank">CADS (Whole-Body CT)</a></h3>
+                <p>22,022 CT volumes with annotations for 167 anatomical structures (18× more scans, 60% more structures than prior). CADS-model delivers state-of-the-art whole-body CT segmentation.</p>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">Whole-body</span><span class="keyword-tag"> 167 structures</span><span class="keyword-tag"> 22K volumes</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jan 2026</div>
+                <h3><a href="https://github.com/jbanusco/BrainFM4Challenges" class="paper-link" target="_blank">BrainFM4Challenges ↗</a></h3>
+                <p>Won both SSL3D and FOMO25 brain MRI challenges at MICCAI 2025. U-Net CNN + anatomical priors. 1-2 orders faster, 10× smaller than transformer-based competitors.</p>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">CNN</span><span class="keyword-tag"> Brain MRI</span><span class="keyword-tag"> Challenge winner</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Nov 2025</div>
+                <h3><a href="#" class="paper-link" target="_blank">Pillar-0</a></h3>
+                <p>Radiology foundation model on 155K CT/MRI. RATE framework for 366 radiologic findings. Best in 87.2% tasks. +7.8-15.8 AUROC over MedGemma, MedImageInsight, Merlin.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">155K scans</span><span class="keyword-tag"> 366 findings</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Aug 2024</div>
+                <h3><a href="#" class="paper-link" target="_blank">SAM2 in Medical Imaging</a></h3>
+                <p>Comprehensive evaluation of SAM2 across 18 medical datasets (CT, MRI, PET, X-ray, ultrasound). Multi-frame 3D pipeline via video propagation achieves competitive performance across diverse modalities.</p>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">SAM2</span><span class="keyword-tag"> 18 datasets</span><span class="keyword-tag"> Multi-frame</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jan 2025</div>
+                <h3><a href="https://github.com/computational-cell-analytics/medico-sam" class="paper-link" target="_blank">MedicoSAM ↗</a></h3>
+                <p>SAM finetuned for medical images. Best for interactive semantic segmentation; benefits from medical pretraining only for interactive (not semantic) tasks. Compatible with existing annotation tools.</p>
+                <span class="cat-badge cat-medical">Medical</span>
+                <div class="keywords"><span class="keyword-tag">SAM</span><span class="keyword-tag"> Interactive</span><span class="keyword-tag"> Annotation</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jan 2025</div>
+                <h3><a href="https://github.com/TimJaspers0801/SurgeNet" class="paper-link" target="_blank">SurgeNetXL ↗</a></h3>
+                <p>Surgical foundation model for computer vision. Trained on 4.7M video frames. SOTA in semantic segmentation, phase recognition, CVS classification across 4 surgical procedures.</p>
+                <span class="cat-badge cat-specialized">Specialized</span>
+                <div class="keywords"><span class="keyword-tag">Surgical</span><span class="keyword-tag"> 4.7M frames</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Medical 3D Segmentation — Architecture Evolution</h3>
+            <div class="chart-container small">
+                <canvas id="medicalChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Dataset Scale Comparison for Major Medical 3D Models</h3>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <tr><th>Model</th><th>Year</th><th>Training Data</th><th>Classes</th><th>Modality</th></tr>
+                    <tr><td>SAM-Med3D</td><td>2023</td><td>22K images / 143K masks</td><td>Multiple</td><td>Multi-modal CT/MRI</td></tr>
+                    <tr><td>CADS</td><td>2025</td><td>22,022 volumes</td><td>167 structures</td><td>CT Whole-body</td></tr>
+                    <tr><td>CT-FM</td><td>2025</td><td>148,000 CT scans</td><td>Multiple</td><td>CT</td></tr>
+                    <tr><td>Triad</td><td>2025</td><td>131,170 MRI volumes</td><td>Multiple</td><td>MRI</td></tr>
+                    <tr><td>Pillar-0</td><td>2025</td><td>155,302 CT/MRI</td><td>366 findings</td><td>CT + MRI</td></tr>
+                    <tr><td>VISTA3D</td><td>2024</td><td>Large multi-source</td><td>127 classes</td><td>Multi-modal</td></tr>
+                    <tr><td>MedDINOv3</td><td>2025</td><td>3.87M CT slices</td><td>Multiple</td><td>CT</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== POINT CLOUD TAB ========== -->
+    <div class="tab-content" id="tab-pointcloud">
+        <div class="card">
+            <h2><span class="section-icon bg-cyan">☁️</span> Point Cloud & Specialized 3D Models</h2>
+            <p>Beyond medical imaging, 3D segmentation research spans point clouds (indoor/outdoor scenes), robotics, autonomous driving, and novel view synthesis. Key architectures: Mask3D (Transformer), Point-SAM (promptable), SAM2Point (zero-shot via video), OpenMaskDINO3D (LLM reasoning).</p>
+        </div>
+
+        <div class="grid-2">
+            <div class="model-card">
+                <div class="date-badge">Oct 2022</div>
+                <h3><a href="https://github.com/JonasSchult/Mask3D" class="paper-link" target="_blank">Mask3D ↗</a></h3>
+                <p>First Transformer-based 3D semantic instance segmentation. Instance queries directly predict masks without voting/clustering. SOTA on ScanNet, S3DIS, STPLS3D, ScanNet200.</p>
+                <span class="cat-badge cat-specialized">Specialized</span>
+                <div class="keywords"><span class="keyword-tag">Transformer</span><span class="keyword-tag"> Instance seg</span><span class="keyword-tag"> Point cloud</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jun 2024</div>
+                <h3><a href="https://github.com/zyc00/Point-SAM" class="paper-link" target="_blank">Point-SAM ↗</a></h3>
+                <p>Promptable 3D segmentation for point clouds. Data engine generates pseudo labels from SAM, distilling 2D knowledge into 3D. SOTA on indoor/outdoor benchmarks.</p>
+                <span class="cat-badge cat-specialized">Specialized</span>
+                <div class="keywords"><span class="keyword-tag">Promptable</span><span class="keyword-tag"> 2D→3D knowledge</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Aug 2024</div>
+                <h3><a href="https://github.com/ZiyuGuo99/SAM2Point" class="paper-link" target="_blank">SAM2Point ↗</a></h3>
+                <p>Zero-shot and promptable 3D segmentation. Interprets 3D data as multi-directional videos via SAM 2. Supports point, box, mask prompts. Generalizes across objects, scenes, LiDAR.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <span class="cat-badge cat-specialized">Specialized</span>
+                <div class="keywords"><span class="keyword-tag">Zero-shot</span><span class="keyword-tag"> SAM2 video</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jun 2023</div>
+                <h3><a href="#" class="paper-link" target="_blank">SAM3D (Scene)</a></h3>
+                <p>Predicts 3D masks by projecting SAM's 2D masks onto point clouds. Bottom-up merging with bidirectional frame combination. Reasonable 3D segmentation without training/fine-tuning.</p>
+                <span class="cat-badge cat-specialized">Specialized</span>
+                <div class="keywords"><span class="keyword-tag">2D→3D projection</span><span class="keyword-tag"> No training</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Dec 2023</div>
+                <h3><a href="#" class="paper-link" target="_blank">GPT4Point</a></h3>
+                <p>Unified point-language multimodal model. Point-cloud captioning, Q&A, controllable 3D generation. Pyramid-XL annotation engine over 1M objects from Objaverse-XL.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <div class="keywords"><span class="keyword-tag">MLLM</span><span class="keyword-tag"> 1M objects</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jun 2025</div>
+                <h3><a href="#" class="paper-link" target="_blank">OpenMaskDINO3D</a></h3>
+                <p>LLM for 3D reasoning segmentation. SEG token + object identifier enables 3D instance segmentation from natural language instructions on point clouds.</p>
+                <span class="cat-badge cat-specialized">Specialized</span>
+                <div class="keywords"><span class="keyword-tag">LLM</span><span class="keyword-tag"> Language prompt</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Aug 2025</div>
+                <h3><a href="#" class="paper-link" target="_blank">PointGauss</a></h3>
+                <p>Point cloud-guided multi-object segmentation for Gaussian Splatting. 1-minute 3D instance mask generation. DesktopObjects-360 dataset (27K masks, 360° coverage).</p>
+                <span class="cat-badge cat-specialized">Specialized</span>
+                <div class="keywords"><span class="keyword-tag">Gaussian Splatting</span><span class="keyword-tag"> Real-time</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Mar 2024</div>
+                <h3><a href="#" class="paper-link" target="_blank">VisionGPT-3D</a></h3>
+                <p>Unified multimodal framework integrating SOTA vision models. Multi-modal input (text, image) → 3D reconstruction via depth estimation, mesh generation.</p>
+                <span class="cat-badge cat-foundation">Foundation</span>
+                <div class="keywords"><span class="keyword-tag">Multimodal agent</span><span class="keyword-tag"> 3D generation</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>SVG Diagram: 3D Segmentation Architecture Families</h3>
+            <div class="diagram-container">
+                <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;">
+                    <!-- Foundation Models Box -->
+                    <rect x="20" y="20" width="180" height="140" rx="10" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"/>
+                    <text x="110" y="45" text-anchor="middle" font-size="14" font-weight="bold" fill="#3730a3">🌐 Foundation</text>
+                    <text x="110" y="65" text-anchor="middle" font-size="11" fill="#4338ca">CT-FM, Triad</text>
+                    <text x="110" y="80" text-anchor="middle" font-size="11" fill="#4338ca">MedDINOv3</text>
+                    <text x="110" y="95" text-anchor="middle" font-size="11" fill="#4338ca">PonderV2</text>
+                    <text x="110" y="110" text-anchor="middle" font-size="11" fill="#4338ca">RadFM, Pillar-0</text>
+                    <text x="110" y="130" text-anchor="middle" font-size="10" font-style="italic" fill="#6366f1">Large-scale SSL</text>
+                    <text x="110" y="145" text-anchor="middle" font-size="10" font-style="italic" fill="#6366f1">Zero-shot transfer</text>
+
+                    <!-- Medical Box -->
+                    <rect x="220" y="20" width="180" height="140" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                    <text x="310" y="45" text-anchor="middle" font-size="14" font-weight="bold" fill="#92400e">🏥 Medical</text>
+                    <text x="310" y="65" text-anchor="middle" font-size="11" fill="#92400e">SAM-Med3D</text>
+                    <text x="310" y="80" text-anchor="middle" font-size="11" fill="#92400e">VISTA3D</text>
+                    <text x="310" y="95" text-anchor="middle" font-size="11" fill="#92400e">CADS (167 struct.)</text>
+                    <text x="310" y="110" text-anchor="middle" font-size="11" fill="#92400e">BrainFM</text>
+                    <text x="310" y="130" text-anchor="middle" font-size="10" font-style="italic" fill="#b45309">CT / MRI / PET</text>
+                    <text x="310" y="145" text-anchor="middle" font-size="10" font-style="italic" fill="#b45309">Clinical trust</text>
+
+                    <!-- Point Cloud Box -->
+                    <rect x="420" y="20" width="180" height="140" rx="10" fill="#cffafe" stroke="#0891b2" stroke-width="2"/>
+                    <text x="510" y="45" text-anchor="middle" font-size="14" font-weight="bold" fill="#155e75">☁️ Point Cloud</text>
+                    <text x="510" y="65" text-anchor="middle" font-size="11" fill="#155e75">Mask3D</text>
+                    <text x="510" y="80" text-anchor="middle" font-size="11" fill="#155e75">Point-SAM</text>
+                    <text x="510" y="95" text-anchor="middle" font-size="11" fill="#155e75">SAM2Point</text>
+                    <text x="510" y="110" text-anchor="middle" font-size="11" fill="#155e75">PointGauss</text>
+                    <text x="510" y="130" text-anchor="middle" font-size="10" font-style="italic" fill="#0e7490">Scenes / LiDAR</text>
+                    <text x="510" y="145" text-anchor="middle" font-size="10" font-style="italic" fill="#0e7490">Robotics / Driving</text>
+
+                    <!-- Microscopy Box -->
+                    <rect x="620" y="20" width="160" height="140" rx="10" fill="#ffe4e6" stroke="#e11d48" stroke-width="2"/>
+                    <text x="700" y="45" text-anchor="middle" font-size="14" font-weight="bold" fill="#9f1239">🔬 Microscopy</text>
+                    <text x="700" y="65" text-anchor="middle" font-size="11" fill="#9f1239">micro-sam</text>
+                    <text x="700" y="80" text-anchor="middle" font-size="11" fill="#9f1239">SAM4EM</text>
+                    <text x="700" y="95" text-anchor="middle" font-size="11" fill="#9f1239">EM-SAM, SAMDA</text>
+                    <text x="700" y="110" text-anchor="middle" font-size="11" fill="#9f1239">uLLSAM</text>
+                    <text x="700" y="130" text-anchor="middle" font-size="10" font-style="italic" fill="#be123c">EM / Cellular</text>
+                    <text x="700" y="145" text-anchor="middle" font-size="10" font-style="italic" fill="#be123c">Connectomics</text>
+
+                    <!-- XAI Box -->
+                    <rect x="220" y="190" width="180" height="110" rx="10" fill="#d1fae5" stroke="#10b981" stroke-width="2"/>
+                    <text x="310" y="215" text-anchor="middle" font-size="14" font-weight="bold" fill="#065f46">💡 Explainable AI</text>
+                    <text x="310" y="235" text-anchor="middle" font-size="11" fill="#065f46">Agg²Exp (voxel)</text>
+                    <text x="310" y="250" text-anchor="middle" font-size="11" fill="#065f46">XAI-CLIP</text>
+                    <text x="700 y="235" text-anchor="middle" font-size="11" fill="#065f46">FBI (point)</text>
+                    <text x="310" y="280" text-anchor="middle" font-size="10" font-style="italic" fill="#047857">Trust & Debug</text>
+
+                    <!-- Arrows -->
+                    <line x1="200" y1="90" x2="220" y2="90" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="400" y1="90" x2="420" y2="90" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="600" y1="90" x2="620" y2="90" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="220" y1="160" x2="280" y2="190" stroke="#10b981" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="400" y1="160" x2="350" y2="190" stroke="#10b981" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="510" y1="160" x2="380" y2="190" stroke="#10b981" stroke-width="2" stroke-dasharray="5,3"/>
+
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8"/>
+                        </marker>
+                        <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MICROSCOPY TAB ========== -->
+    <div class="tab-content" id="tab-microscopy">
+        <div class="card">
+            <h2><span class="section-icon bg-rose">🔬</span> Microscopy & VEM Segmentation (micro-sam)</h2>
+            <p>This section covers work related to <strong>micro-sam</strong> — the Segment Anything adaptation for microscopy. The open-source <a href="https://github.com/computational-cell-analytics/micro-sam" target="_blank">micro-sam</a> provides interactive and automatic segmentation for biomedical microscopy (including volumetric EM/VEM) with outstanding zero-shot and fine-tuned performance.</p>
+        </div>
+
+        <div class="card">
+            <h3><span class="section-icon bg-rose">📦</span> micro-sam — Segment Anything for Microscopy</h3>
+            <p>The <strong>micro-sam</strong> project provides a general-purpose interactive and automatic segmentation tool tailored for microscopy images including volumetric electron microscopy (VEM). Key features: (1) <em>Interactive segmentation</em> using bounding box, point, and text prompts; (em>Automatic segmentation</em> via instance segmentation; (3) <em>Domain adaptation</em> — support for light, electron, and cryo-EM; (4) 3D volume support.</p>
+            <p>Reference: <a href="https://www.nature.com/articles/s41592-024-02580-4" target="_blank" class="paper-link">Nature Methods (2024) ↗</a> — "Segment Anything for Microscopy" (Speiser, Bischof, Roy et al.).</p>
+        </div>
+
+        <div class="grid-2">
+            <div class="model-card">
+                <div class="date-badge">Apr 2025</div>
+                <h3><a href="https://github.com/Uzshah/SAM4EM" class="paper-link" target="_blank">SAM4EM ↗</a></h3>
+                <p>3D segmentation of complex neural structures in EM. Two-stage prompt-free adapter for SAM via mask decoding. Dual-stage LoRA fine-tuning, 3D memory attention. Benchmark: mitochondria, glia, synapses — significant SOTA gains over prior SAM adapters.</p>
+                <span class="cat-badge cat-medical">EM</span>
+                <div class="keywords"><span class="keyword-tag">3D memory</span><span class="keyword-tag"> LoRA</span><span class="keyword-tag"> Neuro</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Mar 2024</div>
+                <h3><a href="#" class="paper-link" target="_blank">SAMDA</a></h3>
+                <p>Few-shot domain adaptation combining SAM with nnUNet. SAM = generic, nnUNet = expert. Dice coefficient +6.7% on target domain. Better with 1 image than 10-shot nnUNet. Verified on mitochondria + brain MRI.</p>
+                <span class="cat-badge cat-medical">EM</span>
+                <div class="keywords"><span class="keyword-tag">Few-shot DA</span><span class="keyword-tag"> nnUNet</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">May 2025</div>
+                <h3><a href="https://github.com/ieellee/uLLSAM" class="paper-link" target="_blank">uLLSAM ↗</a></h3>
+                <p>Unifies Segment Anything in Microscopy using MLLM guidance. VLSA module injects Vision-Language Knowledge; SBR refines boundaries. +7.71% Dice, +12.10% SA across 9 in-domain datasets with strong cross-domain generalization.</p>
+                <span class="cat-badge cat-medical">Microscopy</span>
+                <div class="keywords"><span class="keyword-tag">MLLM</span><span class="keyword-tag"> VL guidance</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jul 2023</div>
+                <h3><a href="#" class="paper-link" target="_blank">EM-SAM</a></h3>
+                <p>Fine-tunes SAM for EM segmentation on AxonCallosumEM dataset (1.83×5.76mm EM of mouse corpus callosum, 600K proofread patches). Outperforms other SOTA for myelinated axons and myelin sheaths.</p>
+                <span class="cat-badge cat-medical">EM</span>
+                <div class="keywords"><span class="keyword-tag">Corpus callosum</span><span class="keyword-tag"> Axon seg</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Feb 2025</div>
+                <h3><a href="#" class="paper-link" target="_blank">Self-Prompt SAM</a></h3>
+                <p>Automatic medical SAM via self-generated bounding boxes and point prompts. 3D depth-fused adapter enables pre-trained 2D SAM to extract 3D info. +2.3% over nnUNet (AMOS2022).</p>
+                <span class="cat-badge cat-medical">Microscopy</span>
+                <div class="keywords"><span class="keyword-tag">Self-prompt</span><span class="keyword-tag"> 3D adapter</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Aug 2024</div>
+                <h3><a href="#" class="paper-link" target="_blank">SAM2 in Medical</a></h3>
+                <p>SAM2 evaluated across 18 medical datasets. Multi-frame 3D segmentation via video propagation achieves competitive results on CT, MRI, PET. Single-frame 2D similar to SAM.</p>
+                <span class="cat-badge cat-medical">Microscopy</span>
+                <div class="keywords"><span class="keyword-tag">SAM2</span><span class="keyword-tag"> Multi-frame</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>VEM Segmentation Workflow with micro-sam</h3>
+            <div class="flow-chart">
+                <div class="flow-item">VEM Stack<br/>(3D Volume)</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Slice Extraction<br/>(2D Frames)</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">micro-sam<br/>Encoder</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Prompt/Auto<br/>Decoder</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">3D Memory<br/>Stitching</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Anatomical<br/>Segmentation</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>SVG Diagram: micro-sam 3D Pipeline Architecture</h3>
+            <div class="diagram-container">
+                <svg viewBox="0 0 750 250" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;">
+                    <rect x="20" y="80" width="120" height="90" rx="8" fill="#fff1f2" stroke="#e11d48" stroke-width="2"/>
+                    <text x="80" y="110" text-anchor="middle" font-size="13" font-weight="bold">VEM Volume</text>
+                    <text x="80" y="130" text-anchor="middle" font-size="10" fill="#666">N×H×W slices</text>
+                    <text x="80" y="148" text-anchor="middle" font-size="10" fill="#666">CT/MRI/PET</text>
+
+                    <rect x="180" y="30" width="100" height="50" rx="6" fill="#fff1f2" stroke="#e11d48" stroke-width="2"/>
+                    <text x="230" y="50" text-anchor="middle" font-size="13" font-weight="bold">Slice 1</text>
+                    <text x="230" y="68" text-anchor="middle" font-size="10" fill="#666">2D</text>
+                    <rect x="180" y="90" width="100" height="50" rx="6" fill="#fff1f2" stroke="#e11d48" stroke-width="2"/>
+                    <text x="230" y="110" text-anchor="middle" font-size="13">Slice 2</text>
+                    <rect x="180" y="150" width="100" height="50" rx="6" fill="#fff1f2" stroke="#e11d48" stroke-width="2"/>
+                    <text x="230" y="170" text-anchor="middle" font-size="13">Slice N</text>
+
+                    <line x1="140" y1="125" x2="180" y2="55" stroke="#e11d48" stroke-width="1.5"/>
+                    <line x1="140" y1="125" x2="180" y2="115" stroke="#e11d48" stroke-width="1.5"/>
+                    <line x1="140" y1="125" x2="180" y2="175" stroke="#e11d48" stroke-width="1.5"/>
+
+                    <rect x="320" y="60" width="130" height="80" rx="8" fill="#ffe4e6" stroke="#be123c" stroke-width="2"/>
+                    <text x="385" y="85" text-anchor="middle" font-size="13" font-weight="bold">micro-sam</text>
+                    <text x="385" y="100" text-anchor="middle" font-size="13" font-weight="bold">Encoder (ViT)</text>
+                    <text x="385" y="118" text-anchor="middle" font-size="10" fill="#666">Image Embeddings</text>
+
+                    <line x1="280" y1="55" x2="320" y2="80" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+                    <line x1="280" y1="115" x2="320" y2="100" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+                    <line x1="280" y1="175" x2="320" y2="120" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+                    <rect x="480" y="20" width="120" height="50" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                    <text x="540" y="40" text-anchor="middle" font-size="12" font-weight="bold">Point/Box Prompt</text>
+                    <text x="540" y="58" text-anchor="middle" font-size="9" fill="#666">Interactive</text>
+
+                    <rect x="480" y="85" width="120" height="50" rx="6" fill="#d1fae5" stroke="#10b981" stroke-width="2"/>
+                    <text x="540" y="105" text-anchor="middle" font-size="12" font-weight="bold">Auto Instance</text>
+                    <text x="540" y="123" text-anchor="middle" font-size="9" fill="#666">Prompt-free</text>
+
+                    <rect x="630" y="60" width="100" height="60" rx="8" fill="#cffafe" stroke="#0891b2" stroke-width="2"/>
+                    <text x="680" y="83" text-anchor="middle" font-size="12" font-weight="bold">3D Memory</text>
+                    <text x="680" y="100" text-anchor="middle" font-size="10" fill="#666">Vol. Stitch</text>
+
+                    <line x1="450" y1="90" x2="480" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+                    <line x1="450" y1="105" x2="480" y2="110" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+                    <line x1="600" y1="45" x2="630" y2="80" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+                    <line x1="600" y1="110" x2="630" y2="100" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+                    <rect x="630" y="170" width="100" height="50" rx="8" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"/>
+                    <text x="680" y="192" text-anchor="middle" font-size="12" font-weight="bold">Segmentation</text>
+                    <text x="680" y="210" text-anchor="middle" font-size="10" fill="#666">3D Output</text>
+                    <line x1="680" y1="120" x2="680" y2="170" stroke="#4f46e5" stroke-width="2" marker-end="url(#arrow)"/>
+
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Key VEM/Microscopy Datasets</h3>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <tr><th>Dataset</th><th>Modality</th><th>Scale</th><th>Task</th><th>Notable</th></tr>
+                    <tr><td>MitoEM</td><td>EM (VEM)</td><td>16K×4K×4K voxels</td><td>Mitochondria</td><td>Human/mouse cortex</td></tr>
+                    <tr><td>MitoEM 2.0</td><td>EM (VEM)</td><td>Extended</td><td>Mitochondria (difficult)</td><td>2025 benchmark</td></tr>
+                    <tr><td>AxonEM</td><td>EM (Volume)</td><td>30×30×30 µm³×2</td><td>Axon instance seg</td><td>Human+mouse cortex, 18K instances</td></tr>
+                    <tr><td>AxonCallosumEM</td><td>EM</td><td>1.83×5.76 mm</td><td>Axon/myelin seg</td><td>Mouse RTT model, 600K patches</td></tr>
+                    <tr><td>CASJ</td><td>EM (Volume)</td><td>Various</td><td>Neural + synapse</td><td>Complex 3D structures</td></tr>
+                    <tr><td>FIB-25</td><td>EM (Slice stack)</td><td>25K×25K×25 nm</td><td>Neuronal tissue</td><td>Dense connectomics</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== XAI TAB ========== -->
+    <div class="tab-content" id="tab-xai">
+        <div class="card">
+            <h2><span class="section-icon bg-emerald">💡</span> Explainable AI for 3D Segmentation</h2>
+            <p>As 3D segmentation models enter clinical pipelines, explanation becomes critical: (1) <strong>Safety</strong> — detecting spurious correlations that harm patients; (2) <strong>Trust</strong> — clinicians need transparent decision rationale; (3) <strong>Debugging</strong> — diagnosing missegmentation; (4) <strong>Discovery</strong> — revealing novel biological insights from model attention.</p>
+        </div>
+
+        <div class="grid-2">
+            <div class="model-card">
+                <div class="date-badge">Jul 2024</div>
+                <h3><a href="https://github.com/mchraba/Agg2Exp" class="paper-link" target="_blank">Agg²Exp ↗</a></h3>
+                <p>Aggregated Attributions for 3D Segmentation. Addresses high-dimensional saliency maps (voxel × classes). Two-level aggregation: (1) voxels within segment → importance, (2) across classes. Gradient-based > perturbation-based on voxel attributions.</p>
+                <span class="cat-badge cat-xai">XAI</span>
+                <div class="keywords"><span class="keyword-tag">Voxel attribution</span><span class="keyword-tag"> SwinUNETR</span><span class="keyword-tag"> TotalSeg</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Feb 2026</div>
+                <h3><a href="https://github.com/lcmmai/PdCR" class="paper-link" target="_blank">Causal XAI (PdCR) ↗</a></h3>
+                <p>Explains segmentation via causal inference framework. ATE (average treatment effect) backpropagated into quantification metric. Reveals heterogeneity in perceptual strategies across foundational models.</p>
+                <span class="cat-badge cat-xai">XAI</span>
+                <div class="keywords"><span class="keyword-tag">Causal inference</span><span class="keyword-tag"> ATE</span><span class="keyword-tag"> Perception</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Mar 2024</div>
+                <h3><a href="#" class="paper-link" target="_blank">FBI (Feature Based Interpretability)</a></h3>
+                <p>Fast pre-bottleneck feature norm XAI for point clouds. 3 orders of magnitude speedup. SOTA classification explainability. Analyzes rotation invariance, OOD robustness, dataset bias in 3D learning.</p>
+                <span class="cat-badge cat-xai">XAI</span>
+                <div class="keywords"><span class="keyword-tag">Point cloud</span><span class="keyword-tag"> Feature norm</span><span class="keyword-tag"> Fast XAI</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Feb 2026</div>
+                <h3><a href="#" class="paper-link" target="_blank">XAI-CLIP</a></h3>
+                <p>ROI-Guided Perturbation using vision-language embeddings. 60% runtime reduction, +44.6% dice, +96.7% IoU for occlusion explanations. Clearer boundary-aware saliency on FLARE22/CHAOS.</p>
+                <span class="cat-badge cat-xai">XAI</span>
+                <div class="keywords"><span class="keyword-tag">CLIP</span><span class="keyword-tag"> ROI perturbation</span><span class="keyword-tag"> Multimodal</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Oct 2021</div>
+                <h3><a href="#" class="paper-link" target="_blank">TorchEsegeta</a></h3>
+                <p>Unified framework for explainability of image-based deep learning. Extends classifiers to segmentation. Adapted for 3D vessel segmentation (brain MRA). Infidelity + sensitivity metrics for evaluation.</p>
+                <span class="cat-badge cat-xai">XAI</span>
+                <div class="keywords"><span class="keyword-tag">Unified framework</span><span class="keyword-tag"> 3D vessels</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Aug 2025</div>
+                <h3><a href="https://github.com/nki-ai/x2x" class="paper-link" target="_blank">From XAI to Explained AI ↗</a></h3>
+                <p>Human-machine-VLM system for computational pathology. Sliding-window experiments test explanation claims. VLM quantifies explanation predictiveness. Clinical path from explainable → explained AI.</p>
+                <span class="cat-badge cat-xai">XAI</span>
+                <div class="keywords"><span class="keyword-tag">VLM</span><span class="keyword-tag"> Sliding window</span><span class="keyword-tag"> Pathology</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Jul 2023</div>
+                <h3>Grad-CAM for Medical Imaging</h3>
+                <p>Study examines interpretability of Grad-CAM in medical classification. Highlights key regions for diagnosis. Limitations and complementary techniques discussed.</p>
+                <span class="cat-badge cat-xai">XAI</span>
+                <div class="keywords"><span class="keyword-tag">Grad-CAM</span><span class="keyword-tag"> Saliency</span></div>
+            </div>
+
+            <div class="model-card">
+                <div class="date-badge">Nov 2025</div>
+                <h3>Affinity Explainer (FSS)</h3>
+                <p>First interpretability method for Few-Shot Semantic Segmentation. Extracts per-pixel support attributions from matching scores. Self-interpretable by design.</p>
+                <span class="cat-badge cat-xai">XAI</span>
+                <div class="keywords"><span class="keyword-tag">FSS</span><span class="keyword-tag"> Attribution</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>SVG Diagram: XAI Methods Taxonomy for 3D Segmentation</h3>
+            <div class="diagram-container">
+                <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" style="max-width:750px;">
+                    <!-- Root -->
+                    <rect x="320" y="10" width="160" height="50" rx="8" fill="#0f172a" stroke="#0f172a" stroke-width="2"/>
+                    <text x="400" y="32" text-anchor="middle" font-size="14" font-weight="bold" fill="white">XAI for 3D Segmentation</text>
+                    <text x="400" y="48" text-anchor="middle" font-size="10" fill="#94a3b8">Interpret & Debug Models</text>
+
+                    <!-- Branch 1: Gradient-Based -->
+                    <line x1="360" y1="60" x2="180" y2="110" stroke="#94a3b8" stroke-width="2"/>
+                    <rect x="120" y="110" width="150" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+                    <text x="195" y="132" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e3a5f">Gradients</text>
+                    <text x="195" y="150" text-anchor="middle" font-size="10" fill="#475569">Grad-CAM</text>
+                    <text x="195" y="163" text-anchor="middle" font-size="10" fill="#475569">Grad-CAM++ / Voxel</text>
+
+                    <!-- Branch 2: Perturbation -->
+                    <line x1="400" y1="60" x2="350" y2="110" stroke="#94a3b8" stroke-width="2"/>
+                    <rect x="290" y="110" width="160" height="60" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                    <text x="370" y="132" text-anchor="middle" font-size="12" font-weight="bold" fill="#14532d">Perturbation</text>
+                    <text x="370" y="150" text-anchor="middle" font-size="10" fill="#475569">Occlusion / Shapley</text>
+                    <text x="370" y="163" text-anchor="middle" font-size="10" fill="#475569">XAI-CLIP (ROI)</text>
+
+                    <!-- Branch 3: Feature -->
+                    <line x1="440" y1="60" x2="580" y2="110" stroke="#94a3b8" stroke-width="2"/>
+                    <rect x="520" y="110" width="160" height="60" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                    <text x="600" y="132" text-anchor="middle" font-size="12" font-weight="bold" fill="#78350f">Feature / Causal</text>
+                    <text x="600" y="150" text-anchor="middle" font-size="10" fill="#475569">FBI (norm)</text>
+                    <text x="600" y="163" text-anchor="middle" font-size="10" fill="#475569">Causal ATE</text>
+
+                    <!-- Deep dive boxes -->
+                    <rect x="120" y="200" width="150" height="50" rx="6" fill="#eff6ff" stroke="#60a5fa" stroke-width="1.5"/>
+                    <text x="195" y="220" text-anchor="middle" font-size="10" font-weight="bold">Agg²Exp</text>
+                    <text x="195" y="235" text-anchor="middle" font-size="9" fill="#64748b">Voxel × Class Aggregation</text>
+
+                    <rect x="290" y="200" width="160" height="50" rx="6" fill="#f0fdf4" stroke="#4ade80" stroke-width="1.5"/>
+                    <text x="370" y="220" text-anchor="middle" font-size="10" font-weight="bold">Causal XAI (PdCR)</text>
+                    <text x="370" y="235" text-anchor="middle" font-size="9" fill="#64748b">ATE on seg Components</text>
+
+                    <rect x="470" y="200" width="160" height="50" rx="6" fill="#fef3c7" stroke="#fbbf24" stroke-width="1.5"/>
+                    <text x="550" y="220" text-anchor="middle" font-size="10" font-weight="bold">VALE (Multimodal)</text>
+                    <text x="550" y="235" text-anchor="middle" font-size="9" fill="#64748b">SHAP + SAM + VLM Text</text>
+
+                    <rect x="640" y="200" width="140" height="50" rx="6" fill="#fef2f2" stroke="#f87171" stroke-width="1.5"/>
+                    <text x="710" y="220" text-anchor="middle" font-size="10" font-weight="bold">TorchEsegeta</text>
+                    <text x="710" y="235" text-anchor="middle" font-size="9" fill="#64748b">3D Vessel Evaluation</text>
+
+                    <!-- Notes -->
+                    <rect x="120" y="270" width="200" height="40" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+                    <text x="220" y="290" text-anchor="middle" font-size="10" fill="#475569">Eval: Infidelity, Sensitivity</text>
+
+                    <rect x="350" y="270" width="200" height="40" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+                    <text x="450" y="290" text-anchor="middle" font-size="10" fill="#475569">Eval: Faithfulness, Localization</text>
+
+                    <rect x="580" y="270" width="200" height="40" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+                    <text x="680" y="290" text-anchor="middle" font-size="10" fill="#475569">Eval: Human Trust (HIVE)</text>
+
+                    <!-- Arrows -->
+                    <line x1="195" y1="170" x2="195" y2="200" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arr2)"/>
+                    <line x1="370" y1="170" x2="370" y2="200" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr2)"/>
+                    <line x1="600" y1="170" x2="550" y2="200" stroke="#d97706" stroke-width="1.5" marker-end="url(#arr2)"/>
+                    <line x1="600" y1="170" x2="710" y2="200" stroke="#d97706" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+                    <defs>
+                        <marker id="arr2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                            <polygon points="0 0, 8 3, 0 6"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>XAI Methods Comparison</h3>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <tr><th>Method</th><th>Type</th><th>Domain</th><th>Strength</th><th>Limitation</th></tr>
+                    <tr><td>Grad-CAM</td><td>Gradient</td><td>3D CNN</td><td>Intuitive, fast</td><td>Only last conv layer, noisy in transformers</td></tr>
+                    <tr><td>Agg²Exp</td><td>Gradient Aggregation</td><td>3D Medical</td><td>Handles voxel × class scalability</td><td>Model-specific gradient access needed</td></tr>
+                    <tr><td>FBI (Feature Attribution)</td><td>Feature norm</td><td>Point Cloud</td><td>3 orders faster, no backward pass</td><td>Less precise localization</td></tr>
+                    <tr><td>Causal XAI (PdCR)</td><td>Causal inference</td><td>3D Seg</td><td>Reveals perceptual strategies, model comparison</td><td>Computationally expensive</td></tr>
+                    <tr><td>XAI-CLIP</td><td>ROI Perturbation</td><td>Medical Seg</td><td>60% faster, clean boundaries</td><td>Depends on CLIP alignment quality</td></tr>
+                    <tr><td>TorchEsegeta</td><td>Unified framework</td><td>3D Vessels</td><td>Extends classifiers → segmentation, quant. eval</td><td>Static, not online</td></tr>
+                    <tr><td>VALE (Multimodal)</td><td>SHAP + SAM + VLM</td><td>2D/3D</td><td>Text explanations bridge semantic gap</td><td>Pipeline complexity, runtime</td></tr>
+                    <tr><td>SeeBel</td><td>Visualization dashboard</td><td>Dataset-level</td><td>Shows class imbalance + performance together</td><td>Post-hoc only</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Application of XAI to 3D Segmentation Pipeline</h3>
+            <div class="flow-chart">
+                <div class="flow-item">Trained 3D<br/>Seg Model</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Saliency Map<br/>Generation</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Voxel/Point<br/>Aggregation</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Anatomical<br/>Relevance</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">Clinical<br/>Trust</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>SVG Diagram: Voxel-level Explanation Visualization (TEM)</h3>
+            <div class="diagram-container">
+                <svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" style="max-width:650px;">
+                    <!-- Input Volume -->
+                    <rect x="30" y="40" width="100" height="120" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+                    <text x="80" y="30" text-anchor="middle" font-size="13" font-weight="bold">Input Volume</text>
+                    <text x="80" y="70" text-anchor="middle" font-size="11" fill="#475569">VEM Slices</text>
+                    <text x="80" y="90" text-anchor="middle" font-size="10" fill="#94a3b8">512×512×N</text>
+                    <text x="80" y="150" text-anchor="middle" font-size="9" fill="#94a3b8">Cell ultrastructure</text>
+
+                    <!-- Model -->
+                    <rect x="170" y="50" width="110" height="100" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+                    <text x="225" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#4c1d95">micro-sam /<br/>Foundation</text>
+                    <text x="225" y="120" text-anchor="middle" font-size="10" fill="#6d28d9">Encoder + 3D Memory</text>
+                    <text x="225" y="135" text-anchor="middle" font-size="10" fill="#6d28d9">Decoder</text>
+
+                    <!-- Output -->
+                    <rect x="320" y="40" width="110" height="120" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+                    <text x="375" y="30" text-anchor="middle" font-size="13" font-weight="bold">Segmentation</text>
+                    <text x="375" y="70" text-anchor="middle" font-size="11" fill="#14532d">Mitochondria</text>
+                    <text x="375" y="90" text-anchor="middle" font-size="11" fill="#14532d">Synapses</text>
+                    <text x="375" y="110" text-anchor="middle" font-size="11" fill="#14532d">Glia</text>
+                    <text x="375" y="130" text-anchor="middle" font-size="11" fill="#14532d">Vesicles</text>
+
+                    <!-- XAI Overlay -->
+                    <rect x="460" y="30" width="210" height="140" rx="8" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+                    <text x="565" y="55" text-anchor="middle" font-size="13" font-weight="bold" fill="#9a3412">XAI Saliency Overlay</text>
+                    <!-- fake heatmap -->
+                    <circle cx="500" cy="90" r="25" fill="#dc2626" opacity="0.7"/>
+                    <circle cx="530" cy="100" r="30" fill="#f97316" opacity="0.5"/>
+                    <circle cx="560" cy="85" r="20" fill="#fbbf24" opacity="0.7"/>
+                    <circle cx="590" cy="110" r="35" fill="#ef4444" opacity="0.6"/>
+                    <circle cx="630" cy="95" r="15" fill="#fcd34d" opacity="0.5"/>
+                    <text x="500" y="95" text-anchor="middle" font-size="9" fill="white">Axon</text>
+                    <text x="530" y="105" text-anchor="middle" font-size="9" fill="white">Mito</text>
+                    <text x="560" y="90" text-anchor="middle" font-size="8" fill="white">Spine</text>
+                    <text x="590" y="115" text-anchor="middle" font-size="9" fill="white">Membr.</text>
+                    <text x="630" y="100" text-anchor="middle" font-size="8" fill="white">Ves</text>
+
+                    <line x1="130" y1="100" x2="170" y2="100" stroke="#7c3aed" stroke-width="2" marker-end="url(#a3)"/>
+                    <line x1="280" y1="100" x2="320" y2="100" stroke="#16a34a" stroke-width="2" marker-end="url(#a3)"/>
+                    <line x1="430" y1="100" x2="460" y2="90" stroke="#ea580c" stroke-width="2" marker-end="url(#a3)"/>
+
+                    <defs>
+                        <marker id="a3" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== TIMELINE TAB ========== -->
+    <div class="tab-content" id="tab-timeline">
+        <div class="card">
+            <h2><span class="section-icon bg-amber">📅</span> Timeline of 3D Segmentation & XAI Advances</h2>
+            <p>Chronological view of major publication milestones from 2023-2026, categorized by model type.</p>
+        </div>
+
+        <div class="card">
+            <div class="timeline">
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">September 2022</div>
+                    <h4>Mask3D — Transformer 3D Segmentation</h4>
+                    <p>First Transformer-based 3D semantic instance segmentation. Eliminates hand-crafted voting/clustering. SOTA on ScanNet, S3DIS, STPLS3D.</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">April 2023</div>
+                    <h4>Medical SAM Adapter (Med-SA)</h4>
+                    <p>PEFT for SAM on medical images. SD-Trans for 3D, HyP-Adpt for prompts. 2% param update, SOTA on 17 medical tasks.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">June 2023</div>
+                    <h4>SAM3D — Segment Anything in 3D</h4>
+                    <p>Zero-shot 3D mask prediction by projecting SAM's masks onto point clouds without training.</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">July 2023</div>
+                    <h4>EM-SAM — Axon Segmentation</h4>
+                    <p>SAM fine-tuned for EM microscopy. Outperforms SOTA on AxonCallosumEM corpus callosum data.</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">August 2023</div>
+                    <h4>SAM-Med2D — Most Comprehensive 2D Adaptation</h4>
+                    <p>4.6M images, 19.7M masks. First comprehensive SAM finetuning for medical 2D.</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">September 2023</div>
+                    <h4>SAM3D (Medical)</h4>
+                    <p>Volumetric medical SAM. Trained end-to-end on 3D volumes (unlike slice-based approaches).</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">October 2023</div>
+                    <h4>SAM-Med3D — General-Purpose Volumetric</h4>
+                    <p>First general-purpose 3D medical SA model. SA-Med3D-140K dataset, 16-dataset evaluation with zero-shot.</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">October 2023</div>
+                    <h4>SAMPro3D — Zero-Shot 3D Indoor Scene</h4>
+                    <p>Locates 3D points as prompts across 2D frames. Frame-consistent mask projection for indoor scenes.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">October 2023</div>
+                    <h4>PonderV2 — Universal 3D Pre-training</h4>
+                    <p>Neural rendering-based pre-training for 3D foundation models. SOTA 11 outdoor/indoor benchmarks.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">November 2023</div>
+                    <h4>GPT4Point — Point-Cloud MLLM</h4>
+                    <p>Unified point-language model for captioning, Q&A, controllable 3D generation. Pyramid-XL 1M objects.</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">December 2023</div>
+                    <h4>Segment Anything for Microscopy (micro-sam)</h4>
+                    <p>Nature Methods publication. opens source adaptive SAM for microscopy: interactive and automatic, 3D volume support.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">February 2024</div>
+                    <h4>VISION-MAE — Self-Supervised Medical Foundation</h4>
+                    <p>2.5M unlabeled images (CT, MR, PET, X-ray, ultrasound). Self-supervised label-efficient fine-tuning.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">March 2024</div>
+                    <h4>VisionGPT-3D — Unified Multimodal 3D Agent</h4>
+                    <p>Integrates SOTA vision models. Multi-modal input → 3D reconstruction and analysis pipeline.</p>
+                </div>
+
+                <div class="timeline-item xai">
+                    <div class="timeline-date">March 2024</div>
+                    <h4>FBI — Fast Point Cloud XAI</h4>
+                    <p>Pre-bottleneck feature norm. 3 orders of magnitude faster than gradient/perturbation methods.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">June 2024</div>
+                    <h4>VISTA3D — SOTA Both Auto & Interactive</h4>
+                    <p>First unified foundation model for 3D medical imaging. 127-class SOTA. Novel 3D supervoxel method.</p>
+                </div>
+
+                <div class="timeline-item specialized">
+                    <div class="timeline-date">June 2024</div>
+                    <h4>Point-SAM — Promptable 3D Point Cloud</h4>
+                    <p>SAM extension to point clouds. Data engine distills 2D pseudo labels. SOTA indoor/outdoor.</p>
+                </div>
+
+                <div class="timeline-item xai">
+                    <div class="timeline-date">July 2024</div>
+                    <h4>Agg²Exp — Voxel Attribution Aggregation</h4>
+                    <p>Aggregation-based XAI for 3D segmentation. Handles voxel×class scalability. Use case: SwinUNETR on TotalSegmentator.</p>
+                </div>
+
+                <div class="timeline-item specialized">
+                    <div class="timeline-date">August 2024</div>
+                    <h4>SAM2Point — Zero-Shot 3D via Video</h4>
+                    <p>SAM2 for 3D scenes interpreted as zero-shot/few-shot videos. Multi-directional video, no projection needed.</p>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-date">August 2024</div>
+                    <h4>SAM2 in Medical Imaging — 18 Dataset Benchmark</h4>
+                    <p>Comprehensive SAM2 eval on CT, MRI, PET, ultrasound, X-ray. Multi-frame 3D propagation pipeline.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">December 2024</div>
+                    <h4>LoRA3D — Self-Calibration</h4>
+                    <p>Low-rank adaptation for 3D geometric models. Self-calibrates to target scenes in 5min. +88% reconstruction.</p>
+                </div>
+
+                <div class="timeline-item xai">
+                    <div class="timeline-date">December 2024</div>
+                    <h4>HIVE — Human Interpretability Evaluation</h4>
+                    <p>Human-centered XAI evaluation framework. 1000 participants, 4 methods evaluated.</p>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-date">January 2025</div>
+                    <h4>SurgeNetXL — Surgical Foundation</h4>
+                    <p>4.7M surgical frames. SOTA segmentation, phase recognition, CVS classification.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">January 2025</div>
+                    <h4>CT-FM — CT Foundation Model</h4>
+                    <p>148K CT scans contrastive pre-training. SOTA whole-body, tumor segmentation, retrieval.</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">January 2025</div>
+                    <h4>Sam4EM / Self-Prompt SAM — Microscopy Advances</h4>
+                    <p>3D memory attention for VEM stacks; self-prompt box+point for nnUNet-rivaling medical seg.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">February 2025</div>
+                    <h4>Triad — MRI Foundation Model</h4>
+                    <p>131K MRI pre-training. +2.5-4% segmentation, classification, registration improvements.</p>
+                </div>
+
+                <div class="timeline-item xai">
+                    <div class="timeline-date">February 2025</div>
+                    <h4>Causal XAI (PdCR) — ATE Explanation</h4>
+                    <p>Causal inference for 3D seg. Reveals perceptual strategy heterogeneity across models.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">April 2025</div>
+                    <h4>uLLSAM — MLLM-guided Microscopy Micro-sam</h4>
+                    <p>Vision-Language Knowledge injection via VLSA. +7.71% Dice across 9 datasets.</p>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-date">May 2025</div>
+                    <h4>VisionGPT-3D / PointGauss — Emerging Specialized</h4>
+                    <p>Gaussian Splatting multi-object segmentation in 1 minute. Real-time 3D instance masks.</p>
+                </div>
+
+                <div class="timeline-item xai">
+                    <div class="timeline-date">August 2025</div>
+                    <h4>From XAI to Explained AI (x2x)</h4>
+                    <p>VLM-based explanation verification. Pathologist-slide interaction + explanation quantification.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">September 2025</div>
+                    <h4>MedDINOv3 — SOTA Medical Seg</h4>
+                    <p>ViT + multi-scale aggregation. 3.87M CT pre-training. SOTA across 4 seg benchmarks.</p>
+                </div>
+
+                <div class="timeline-item medical">
+                    <div class="timeline-date">July 2025</div>
+                    <h4>CADS — 167-Structure Whole-Body CT</h4>
+                    <p>22K volumes, largest dataset for full-body anatomical segmentation. SOTA across 18 public datasets.</p>
+                </div>
+
+                <div class="timeline-item foundation">
+                    <div class="timeline-date">November 2025</div>
+                    <h4>Pillar-0 — New Radiology Frontier</h4>
+                    <p>155K CT/MRI. Best in 87.2% of 366 radiologic findings. Outperforms MedGemma, Merlin.</p>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-date">December 2025</div>
+                    <h4>AnyMC3D — Unified Scalable 3D Classification</h4>
+                    <p>2D FM → 3D classifier via lightweight plugins. 1st place in VLM3D challenge. Interpretable heatmaps.</p>
+                </div>
+
+                <div class="timeline-item xai">
+                    <div class="timeline-date">January 2026</div>
+                    <h4>Faithfulness of Grad-CAM in Lung Cancer</h4>
+                    <p>Critical investigation of Grad-CAM. Explains failure modes in ViTs vs CNNs. Calls for cautious adoption.</p>
+                </div>
+
+                <div class="timeline-item xai">
+                    <div class="timeline-date">February 2026</div>
+                    <h4>XAI-CLIP — ROI-Guided Medical Explanations</h4>
+                    <p>60% faster, +44.6% dice. CLIP-aligned boundary-aware occlusion explanations.</p>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-date">April 2026</div>
+                    <h4>Curia-2 / RADFormer — Scaling Radiology FMs</h4>
+                    <p>Billion-parameter CT/MRI FM. CuriaBench with 2D and 3D tracks.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Publication Year Distribution (2023-2026)</h3>
+            <div class="chart-container">
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ==================== FOOTER ==================== -->
+<div class="footer">
+    <p>📊 Preliminary survey compiled July 2026 | Author: <a href="https://huggingface.co/tahamidhossain" target="_blank">tahamidhossain</a></p>
+    <p>📁 Also references prior micro-sam VEM segmentation work</p>
+    <p>🔗 Papers linked via <a href="https://hf.co/papers" target="_blank">huggingface.co/papers</a></p>
+</div>
+
+<!-- ==================== JAVASCRIPT ==================== -->
+<script>
+// Tab Navigation
+function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    event.target.classList.add('active');
+    // Initialize charts for this tab
+    setTimeout(() => initCharts(tabId), 10);
+}
+
+// Chart instances
+let charts = {};
+
+function initCharts(tab) {
+    if (tab === 'overview' && !charts.domain) {
+        charts.domain = new Chart(document.getElementById('domainChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Medical 3D Seg', 'Foundation Models', 'Point Cloud / Robotics', 'Microscopy / EM', 'XAI / Interpretability'],
+                datasets: [{
+                    data: [8, 6, 5, 4, 5],
+                    backgroundColor: ['#f59e0b', '#4f46e5', '#0891b2', '#e11d48', '#10b981'],
+                    borderWidth: 2,
+                    borderColor: 'white'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+    }
+    if (tab === 'foundation' && !charts.foundation) {
+        charts.foundation = new Chart(document.getElementById('foundationChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024', 'Q1 2025', 'Q3 2025'],
+                datasets: [{
+                    label: 'Foundation Model Publications',
+                    data: [3, 1, 2, 1, 2, 3, 2],
+                    backgroundColor: '#818cf8',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    }
+    if (tab === 'medical' && !charts.medical) {
+        charts.medical = new Chart(document.getElementById('medicalChart'), {
+            type: 'polarArea',
+            data: {
+                labels: ['CNN U-Net', 'SAM-based (prompt)', 'SAM-based (auto)', 'Transformer FM', 'MLLM/Agent'],
+                datasets: [{
+                    data: [2, 4, 2, 4, 2],
+                    backgroundColor: ['#fcd34d', '#fb923c', '#f87171', '#a78bfa', '#34d399'],
+                    borderWidth: 2,
+                    borderColor: 'white'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'right' } }
+            }
+        });
+    }
+    if (tab === 'timeline' && !charts.timeline) {
+        charts.timeline = new Chart(document.getElementById('timelineChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Q4 2022', 'Q2 2023', 'Q4 2023', 'Q2 2024', 'Q4 2024', 'Q2 2025', 'Q4 2025', 'Q2 2026'],
+                datasets: [
+                    { label: 'Medical 3D', data: [0, 2, 4, 3, 2, 2, 2, 1], backgroundColor: '#f59e0b', borderRadius: 3 },
+                    { label: 'Foundation',  data: [1, 1, 3, 2, 2, 1, 2, 1], backgroundColor: '#4f46e5', borderRadius: 3 },
+                    { label: 'Point/Special', data: [1, 1, 0, 2, 1, 2, 1, 1], backgroundColor: '#0891b2', borderRadius: 3 },
+                    { label: 'Microscopy/EM', data: [0, 1, 1, 0, 0, 2, 0, 0], backgroundColor: '#e11d48', borderRadius: 3 },
+                    { label: 'XAI',         data: [0, 0, 0, 1, 1, 0, 2, 2], backgroundColor: '#10b981', borderRadius: 3 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true }
+                },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    }
+}
+
+// Initialize overview charts on load
+window.addEventListener('DOMContentLoaded', () => initCharts('overview'));
+</script>
+
+</body>
+</html>
