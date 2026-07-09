@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Medical Segmentation Models - 2025/2026 Field Survey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: oklch(12% 0.015 250);
+  --bg-base: oklch(14% 0.015 250);
+  --surface-1: oklch(16% 0.015 250);
+  --surface-2: oklch(19% 0.018 250);
+  --surface-3: oklch(22% 0.018 250);
+  --primary: oklch(70% 0.15 85);
+  --primary-soft: oklch(70% 0.15 85 / 0.08);
+  --primary-bright: oklch(75% 0.15 85);
+  --secondary: oklch(65% 0.14 170);
+  --secondary-soft: oklch(65% 0.14 170 / 0.08);
+  --text-title: oklch(95% 0.008 250);
+  --text-body: oklch(85% 0.012 250);
+  --text-muted: oklch(60% 0.022 250);
+  --text-dim: oklch(48% 0.022 250);
+  --border-subtle: oklch(25% 0.015 250);
+  --border-base: oklch(30% 0.018 250);
+  --border-strong: oklch(40% 0.022 250);
+  --signal-green: oklch(65% 0.15 145);
+  --signal-red: oklch(60% 0.16 25);
+  --signal-amber: oklch(75% 0.14 75);
+  --font-display: "Newsreader", "Georgia", serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --measure: 72ch;
+  --space-unit: 8px
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-body);
+  line-height: 1.6;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  color: var(--text-title);
+  font-weight: 400;
+  line-height: 1.15;
+}
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--primary);
+  font-weight: 500;
+}
+.muted { color: var(--text-muted); }
+.dim { color: var(--text-dim); }
+.prose p { max-width: var(--measure); }
+a { color: var(--primary-bright); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Layout */
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 4vw, 56px);
+}
+.page > section { padding: clamp(40px, 8vmin, 96px) 0; }
+
+/* Hero */
+.hero {
+  padding-top: clamp(48px, 10vmin, 120px);
+  padding-bottom: clamp(40px, 6vmin, 80px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.hero h1 {
+  font-size: clamp(32px, 5vmin, 56px);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  margin: 0 0 16px;
+  max-width: 16ch;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--primary);
+}
+.hero .lede {
+  font-size: 18px;
+  color: var(--text-muted);
+  max-width: 52ch;
+  line-height: 1.55;
+}
+.hero .meta-bar {
+  display: flex;
+  gap: 24px;
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.hero .meta-bar span strong {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* TOC */
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+}
+.toc a {
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  transition: color 150ms, border-color 150ms;
+}
+.toc a:hover {
+  color: var(--text-muted);
+  border-color: var(--border-subtle);
+  text-decoration: none;
+}
+
+/* Model section */
+.model-section {
+  padding-top: clamp(48px, 8vmin, 88px)!important;
+  padding-bottom: clamp(48px, 8vmin, 88px)!important;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.model-section:last-of-type { border-bottom: none; }
+
+.model-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.model-num {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--primary);
+  opacity: 0.7;
+  font-style: italic;
+}
+.model-header h2 {
+  font-size: clamp(24px, 3vmin, 34px);
+  letter-spacing: -0.01em;
+}
+.model-tagline {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  max-width: 60ch;
+}
+
+/* Diagram + deets layout */
+.model-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: clamp(24px, 4vw, 56px);
+  margin-bottom: 32px;
+}
+@media (max-width: 860px) {
+  .model-grid { grid-template-columns: 1fr; }
+}
+
+.diagram-wrap {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 24px;
+}
+.diagram-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-block {
+  font-size: 14px;
+  line-height: 1.55;
+}
+.info-block h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  font-weight: 500;
+  font-family: var(--font-body);
+}
+.info-block p { color: var(--text-muted); }
+.info-block .meta-line {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+.meta-line .label { color: var(--text-dim); min-width: 80px; }
+.meta-line .value { color: var(--text-body); }
+
+.source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+.source-links a {
+  font-size: 11.5px;
+  color: var(--primary-bright);
+  text-decoration: none;
+  padding: 3px 9px;
+  border: 1px solid var(--border-base);
+  border-radius: 3px;
+  background: var(--primary-soft);
+  transition: border-color 150ms, background 150ms;
+  line-height: 1.4;
+}
+.source-links a:hover {
+  border-color: var(--primary);
+  background: oklch(70% 0.15 85 / 0.12);
+  text-decoration: none;
+}
+.source-links a .ext {
+  color: var(--text-dim);
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.pros-cons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.pros-cons .pro h4 { color: var(--signal-green); }
+.pros-cons .con h4 { color: var(--signal-red); }
+.pros-cons ul {
+  list-style: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.pros-cons li {
+  padding: 5px 0;
+  padding-left: 18px;
+  position: relative;
+  line-height: 1.45;
+}
+.pros-cons li::before {
+  position: absolute;
+  left: 0;
+  top: 9px;
+  font-size: 10px;
+}
+.pros-cons .pro li::before { content: "+"; color: var(--signal-green); }
+.pros-cons .con li::before { content: "–"; color: var(--signal-red); }
+
+/* MicroSAM compare callout */
+.compare {
+  background: var(--surface-1);
+  border: 1px solid var(--border-base);
+  border-radius: 4px;
+  padding: 18px 22px;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.compare .compare-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--secondary);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.compare p { color: var(--text-body); }
+
+/* Comparison matrix */
+.matrix-section { }
+.matrix-section h2 {
+  font-size: clamp(24px, 3vmin, 32px);
+  margin-bottom: 8px;
+}
+.matrix-section .lede {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+table.matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 900px;
+}
+.matrix thead th {
+  background: var(--surface-1);
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-body);
+}
+.matrix tbody td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-body);
+  vertical-align: top;
+}
+.matrix tbody tr:hover { background: var(--surface-1); }
+.matrix tbody tr:last-child td { border-bottom: none; }
+.matrix .feature-name {
+  color: var(--text-title);
+  font-weight: 400;
+}
+.cell-good { color: var(--signal-green); font-size: 12px; }
+.cell-partial { color: var(--signal-amber); font-size: 12px; }
+.cell-bad { color: var(--signal-red); font-size: 12px; }
+.cell-note { color: var(--text-muted); font-size: 12px; }
+
+/* MicroSAM section */
+.microsam {
+  background: var(--surface-1);
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  padding: clamp(28px, 4vw, 44px);
+  margin-top: clamp(32px, 5vw, 56px);
+}
+.microsam h3 {
+  font-size: clamp(20px, 2.4vmin, 26px);
+  margin-bottom: 4px;
+}
+.microsam .ms-tagline {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+.ms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+.ms-grid .block h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+.ms-grid .block p {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Footer */
+.page-footer {
+  padding: 32px 0 64px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.page-footer strong {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Scroll reveals */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1), transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  *, *::before, *::after { animation-duration: 0.01ms!important; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="eyebrow">Field survey &mdash; July 2026</div>
+  <h1>The next wave of <em>3D medical segmentation</em> beyond MicroSAM</h1>
+  <p class="lede">Eight models released between late 2025 and mid-2026 that extend, replace, or unify what SAM-based architectures can do for volumetric clinical image analysis &mdash; from free-text promptable foundation models to bidirectional Mamba backbones.</p>
+  <div class="meta-bar">
+    <span><strong>8 models</strong> detailed</span>
+    <span><strong>Span</strong> Aug 2025 &ndash; May 2026</span>
+    <span><strong>Source</strong> Hugging Face / arXiv</span>
+  </div>
+</section>
+
+<!-- TOC -->
+<nav class="toc">
+  <a href="#model-seer">SEER</a>
+  <a href="#model-medvl-sam2">MedVL-SAM2</a>
+  <a href="#model-bisegmamba">BiSegMamba</a>
+  <a href="#model-segviGen">SegviGen</a>
+  <a href="#model-voxtell">VoxTell</a>
+  <a href="#model-fdif">FDIF</a>
+  <a href="#model-medsam3">MedSAM3</a>
+  <a href="#model-p3-sam">P3-SAM</a>
+  <a href="#matrix">Comparison</a>
+  <a href="#microsam-ref">vs. MicroSAM</a>
+</nav>
+
+<!-- 1. SEER -->
+<section class="model-section reveal" id="model-seer">
+  <div class="model-header">
+    <span class="model-num">01</span>
+    <h2>SEER &mdash; Skill-Evolving Grounded Reasoning</h2>
+  </div>
+  <p class="model-tagline">Free-text interpretable segmentation. Translates unstructured clinical language into 3D masks via vision-language reasoning with a dynamically evolving skill bank.</p>
+
+  <div class="model-grid">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="seer-grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.05"/>
+          </linearGradient>
+          <linearGradient id="seer-grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="oklch(65% 0.14 170)" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="oklch(65% 0.14 170)" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+        <!-- Input area -->
+        <rect x="20" y="30" width="140" height="60" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="90" y="52" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">Free-text Query</text>
+        <text x="90" y="68" text-anchor="middle" font-size="9" fill="oklch(48% 0.022 250)" font-family="DM Sans" font-style="italic">"Show brain tumors"</text>
+
+        <rect x="20" y="100" width="140" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="90" y="120" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">Multi-view Volume</text>
+        <text x="90" y="136" text-anchor="middle" font-size="9" fill="oklch(48% 0.022 250)" font-family="DM Sans">Rendered 2D views</text>
+
+        <!-- Arrows from inputs -->
+        <line x1="160" y1="60" x2="192" y2="90" stroke="oklch(70% 0.15 85)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <line x1="160" y1="125" x2="192" y2="118" stroke="oklch(65% 0.14 170)" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+        <!-- VLM Core -->
+        <rect x="190" y="75" width="150" height="70" rx="4" fill="url(#seer-grad1)" stroke="oklch(70% 0.15 85)" stroke-width="1.5"/>
+        <text x="265" y="100" text-anchor="middle" font-size="11" fill="oklch(95% 0.008 250)" font-family="Newsreader">VLM Core</text>
+        <text x="265" y="116" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">Qwen3-VL-4B</text>
+        <text x="265" y="132" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">GRPO reasoning</text>
+
+        <!-- SEER Bank loop -->
+        <rect x="205" y="160" width="120" height="40" rx="4" fill="url(#seer-grad2)" stroke="oklch(65% 0.14 170)"/>
+        <text x="265" y="176" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">SEER-Bank</text>
+        <text x="265" y="190" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Skill artifacts</text>
+        <!-- loop arrow -->
+        <path d="M 325 180 Q 350 120 340 110" fill="none" stroke="oklch(65% 0.14 170)" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arrow-seer)"/>
+        <defs><marker id="arrow-seer" markerWidth="6" markerHeight="6" refX="3" refY="3"><path d="M0,0 L6,3 L0,6" fill="none" stroke="oklch(65% 0.14 170)"/></marker></defs>
+
+        <!-- Output spec -->
+        <rect x="360" y="88" width="100" height="44" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(70% 0.15 85)"/>
+        <text x="410" y="106" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">Canonical Spec</text>
+        <text x="410" y="120" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Evidence-aligned</text>
+
+        <line x1="340" y1="110" x2="360" y2="110" stroke="oklch(70% 0.15 85)" stroke-width="1.5"/>
+
+        <!-- Segmentation backbone -->
+        <rect x="355" y="158" width="110" height="44" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="410" y="176" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Frozen Seg Backbone</text>
+        <text x="410" y="190" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">MedSAM3 / other</text>
+
+        <line x1="410" y1="132" x2="410" y2="158" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Output mask -->
+        <rect x="380" y="228" width="72" height="36" rx="3" fill="oklch(65% 0.14 170 / 0.1)" stroke="oklch(65% 0.14 170)"/>
+        <text x="416" y="250" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">3D Mask</text>
+
+        <line x1="410" y1="202" x2="410" y2="228" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Reasoning stages on the left -->
+        <text x="265" y="60" text-anchor="middle" font-size="9" fill="oklch(65% 0.14 170)" font-family="DM Sans">Intent</text>
+        <text x="265" y="70" text-anchor="middle" font-size="9" fill="oklch(65% 0.14 170)" font-family="DM Sans">evidence</text>
+        <text x="265" y="152" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Loop refinement</text>
+      </svg>
+    </div>
+
+    <div class="aside">
+      <div class="info-block">
+        <h4>Facts</h4>
+        <div class="meta-line"><span class="label">Released</span><span class="value">Mar 2026</span></div>
+        <div class="meta-line"><span class="label">Institution</span><span class="value">Fudan University</span></div>
+        <div class="meta-line"><span class="label">VLM</span><span class="value">Qwen3-VL-4B-Instruct</span></div>
+        <div class="meta-line"><span class="label">Dice</span><span class="value">53.83 (BrainMet); 97.39 (PENGWIN)</span></div>
+      </div>
+      <div class="source-links">
+        <a href="https://arxiv.org/abs/2603.08215" target="_blank" rel="noopener">Paper <span class="ext">&rarr;</span></a>
+        <a href="https://seer-medseg.github.io" target="_blank" rel="noopener">Project <span class="ext">&rarr;</span></a>
+      </div>
+      <div class="pros-cons">
+        <div class="pro"><h4>Strengths</h4><ul>
+          <li>Robust to linguistic variability (81.94% variance reduction)</li>
+          <li>Worst-case Dice improved by 18.60%</li>
+          <li>Transferable across backbones</li>
+          <li>SEER self-refines through skill bank</li>
+        </ul></div>
+        <div class="con"><h4>Limitations</h4><ul>
+          <li>Requires GRPO training infrastructure</li>
+          <li>Limited to CT volumes in evaluation</li>
+          <li>Dependency on frozen segmentation backbone</li>
+          <li>Smaller training dataset (SEER-Trace ~22K)</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-label">vs. MicroSAM</div>
+    <p>Where MicroSAM segments from point/box prompts via a SAM encoder fine-tuned on 3D volumes, SEER operates entirely on free-text. No spatial prompt is needed &mdash; the model disambiguates language and generates a canonical canonical spec. This is a different interaction paradigm rather than a feature upgrade. MicroSAM remains better when you already have precise spatial prompts.</p>
+  </div>
+</section>
+
+<!-- 2. MedVL-SAM2 -->
+<section class="model-section reveal" id="model-medvl-sam2">
+  <div class="model-header">
+    <span class="model-num">02</span>
+    <h2>MedVL-SAM2 &mdash; Unified 3D VLM</h2>
+  </div>
+  <p class="model-tagline">One model. Report generation, VQA, semantic segmentation, referring segmentation, and interactive segmentation. Integrates SAM2's [SEG] token into a LLaVA-style 3D vision-language backbone.</p>
+
+  <div class="model-grid">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="medvl-enc" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.02"/>
+          </linearGradient>
+          <linearGradient id="medvl-llm" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="oklch(65% 0.14 170)" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="oklch(65% 0.14 170)" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Input volume -->
+        <rect x="20" y="70" width="90" height="80" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="65" y="100" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">3D Volume</text>
+        <text x="65" y="115" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">32x256x256</text>
+        <text x="65" y="130" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">CT slices</text>
+
+        <!-- Vision Encoder -->
+        <rect x="135" y="70" width="100" height="50" rx="4" fill="url(#medvl-enc)" stroke="oklch(70% 0.15 85)"/>
+        <text x="185" y="90" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">M3D-CLIP</text>
+        <text x="185" y="106" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">3D ViT encoder</text>
+        <line x1="110" y1="105" x2="135" y2="95" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- MLP-Mixer -->
+        <rect x="250" y="70" width="90" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="295" y="90" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">MLP-Mixer</text>
+        <text x="295" y="106" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">2048&rarr;512 tokens</text>
+        <line x1="185" y1="120" x2="185" y2="56" stroke="oklch(40% 0.022 250)" stroke-width="1" stroke-dasharray="2 2"/>
+        <line x1="185" y1="56" x2="295" y2="56" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+        <line x1="295" y1="56" x2="295" y2="70" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- LLM -->
+        <rect x="350" y="56" width="110" height="78" rx="4" fill="url(#medvl-llm)" stroke="oklch(65% 0.14 170)"/>
+        <text x="405" y="80" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">InternVL-2.5-4B</text>
+        <text x="405" y="96" text-anchor="middle" font-size="8.5" fill="oklch(60% 0.022 250)" font-family="DM Sans">LoRA-tuned LLM</text>
+        <line x1="405" y1="100" x2="405" y2="134" stroke="oklch(65% 0.14 170)" stroke-width="1"/>
+
+        <!-- SEG token highlight -->
+        <rect x="370" y="142" width="70" height="22" rx="3" fill="oklch(65% 0.14 170 / 0.15)" stroke="oklch(65% 0.14 170)"/>
+        <text x="405" y="157" text-anchor="middle" font-size="11" fill="oklch(75% 0.15 85)" font-family="Newsreader">[SEG] token</text>
+        <line x1="405" y1="134" x2="405" y2="142" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- SAM2 Decoder -->
+        <rect x="340" y="190" width="130" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="405" y="210" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">SAM2 Decoder</text>
+        <text x="405" y="225" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Memory attention</text>
+        <line x1="405" y1="164" x2="405" y2="190" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Prompt inputs (points/boxes) -->
+        <rect x="30" y="200" width="80" height="30" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="70" y="219" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">Pt / Box Prompts</text>
+        <line x1="110" y1="215" x2="340" y2="215" stroke="oklch(40% 0.022 250)" stroke-width="1" stroke-dasharray="3 2"/>
+
+        <!-- Outputs -->
+        <rect x="30" y="270" width="100" height="36" rx="3" fill="oklch(70% 0.15 85 / 0.08)" stroke="oklch(70% 0.15 85)"/>
+        <text x="80" y="292" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Text Output</text>
+
+        <rect x="160" y="270" width="120" height="36" rx="3" fill="oklch(65% 0.14 170 / 0.08)" stroke="oklch(65% 0.14 170)"/>
+        <text x="220" y="292" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Segmentation Mask</text>
+
+        <rect x="310" y="270" width="120" height="36" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="370" y="286" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">Report Generation</text>
+        <text x="370" y="298" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">VQA</text>
+
+        <!-- Labels -->
+        <text x="185" y="148" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Unimodal projector</text>
+        <text x="185" y="158" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">(Stage 1)</text>
+      </svg>
+    </div>
+
+    <div class="aside">
+      <div class="info-block">
+        <h4>Facts</h4>
+        <div class="meta-line"><span class="label">Released</span><span class="value">Jan 2026</span></div>
+        <div class="meta-line"><span class="label">Institution</span><span class="value">University of Florida</span></div>
+        <div class="meta-line"><span class="label">LLM</span><span class="value">InternVL-2.5-4B</span></div>
+        <div class="meta-line"><span class="label">Tasks</span><span class="value">Report gen, VQA, segmentation</span></div>
+      </div>
+      <div class="source-links">
+        <a href="https://arxiv.org/abs/2601.09879" target="_blank" rel="noopener">Paper <span class="ext">&rarr;</span></a>
+      </div>
+      <div class="pros-cons">
+        <div class="pro"><h4>Strengths</h4><ul>
+          <li>Single model for multiple clinical tasks</li>
+          <li>Multi-modal prompts (text, point, box)</li>
+          <li>Strong volumetric consistency via SAM2 memory</li>
+          <li>SOTA on CT-RATE VQA (89.74% MCQ)</li>
+        </ul></div>
+        <div class="con"><h4>Limitations</h4><ul>
+          <li>4x token expansion vs 2D LLaVA (efficiency cost)</li>
+          <li>Multi-stage training pipeline is complex</li>
+          <li>SAM2 output unidirectional (no feedback to LLM)</li>
+          <li>Limited to CT data in current training</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-label">vs. MicroSAM</div>
+    <p>MedVL-SAM2 is not a drop-in replacement for MicroSAM &mdash; it is a completely different architecture designed for multi-task reasoning. Where MicroSAM excels at pure segmentation from spatial prompts with a lightweight footprint, MedVL-SAM2 adds report generation, VQA, and referring segmentation at the cost of a larger model (4B LLM backbone + SAM2 decoder). If your need is pure segmentation, MicroSAM is simpler; if you need dialog and grounding, MedVL-SAM2 covers a broader clinical workflow.</p>
+  </div>
+</section>
+
+<!-- 3. BiSegMamba -->
+<section class="model-section reveal" id="model-bisegmamba">
+  <div class="model-header">
+    <span class="model-num">03</span>
+    <h2>BiSegMamba &mdash; Bidirectional Tri-Oriented Mamba</h2>
+  </div>
+  <p class="model-tagline">Pure Mamba architecture for 3D medical segmentation with 77.9% fewer FLOPs than SegMamba-V2. Bidirectional orthogonal scanning replaces both Transformer attention and CNN locality biases.</p>
+
+  <div class="model-grid">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="mamba-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.1"/>
+            <stop offset="100%" stop-color="oklch(65% 0.14 170)" stop-opacity="0.05"/>
+          </linearGradient>
+        </defs>
+
+        <!-- PCS input -->
+        <rect x="20" y="30" width="100" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="70" y="50" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">Input Volume</text>
+        <text x="70" y="65" text-anchor="middle" font-size="9" fill="oklch(48% 0.022 250)" font-family="DM Sans">Anisotropic 3D</text>
+
+        <!-- PCS block -->
+        <rect x="140" y="30" width="90" height="50" rx="4" fill="oklch(70% 0.15 85 / 0.08)" stroke="oklch(70% 0.15 85)"/>
+        <text x="185" y="50" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">PCS</text>
+        <text x="185" y="65" text-anchor="middle" font-size="8.5" fill="oklch(60% 0.022 250)" font-family="DM Sans">Progressive Compacting</text>
+        <line x1="120" y1="55" x2="140" y2="55" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Two arrows out of PCS -->
+        <line x1="230" y1="48" x2="270" y2="48" stroke="oklch(70% 0.15 85)" stroke-width="1.2"/>
+        <text x="250" y="42" text-anchor="middle" font-size="8" fill="oklch(70% 0.15 85)" font-family="DM Sans">compact</text>
+        <line x1="230" y1="62" x2="270" y2="80" stroke="oklch(40% 0.022 250)" stroke-width="1" stroke-dasharray="2 2"/>
+        <text x="250" y="76" text-anchor="middle" font-size="8" fill="oklch(48% 0.022 250)" font-family="DM Sans">shallow</text>
+
+        <!-- MSSM stages -->
+        <rect x="270" y="30" width="80" height="30" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="310" y="49" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">MSSM &times; 2</text>
+
+        <rect x="360" y="30" width="100" height="30" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="410" y="44" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Patch Merge</text>
+        <text x="410" y="54" text-anchor="middle" font-size="8" fill="oklch(48% 0.022 250)" font-family="DM Sans">downsample</text>
+
+        <!-- Bi-ToOM block -->
+        <rect x="270" y="70" width="190" height="60" rx="4" fill="url(#mamba-grad)" stroke="oklch(65% 0.14 170)" stroke-width="1.5"/>
+        <text x="365" y="90" text-anchor="middle" font-size="11" fill="oklch(95% 0.008 250)" font-family="Newsreader">Bi-ToOM Block</text>
+        <text x="365" y="106" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">Bidirectional tri-oriented scan</text>
+        <text x="365" y="120" text-anchor="middle" font-size="8" fill="oklch(48% 0.022 250)" font-family="DM Sans">Forward &middot; Backward &middot; 3 axes</text>
+        <!-- small bidirectional arrows -->
+        <path d="M 290 100 L 280 95" fill="none" stroke="oklch(65% 0.14 170)" stroke-width="1"/>
+        <path d="M 290 100 L 280 105" fill="none" stroke="oklch(65% 0.14 170)" stroke-width="1"/>
+        <path d="M 440 100 L 450 95" fill="none" stroke="oklch(65% 0.14 170)" stroke-weight="1"/>
+        <path d="M 440 100 L 450 105" fill="none" stroke="oklch(65% 0.14 170)" stroke-width="1"/>
+
+        <!-- ADF -->
+        <rect x="300" y="145" width="120" height="32" rx="3" fill="oklch(65% 0.14 170 / 0.1)" stroke="oklch(65% 0.14 170)"/>
+        <text x="360" y="165" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">ADF</text>
+        <line x1="365" y1="130" x2="365" y2="145" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Decoder -->
+        <rect x="300" y="190" width="120" height="36" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="360" y="208" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">UNETR Decoder</text>
+        <text x="360" y="220" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Upsampling + skip</text>
+        <line x1="360" y1="177" x2="360" y2="190" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- RCH head -->
+        <rect x="300" y="240" width="120" height="36" rx="3" fill="oklch(70% 0.15 85 / 0.08)" stroke="oklch(70% 0.15 85)"/>
+        <text x="360" y="258" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">RCH</text>
+        <text x="360" y="270" text-anchor="middle" font-size="8" fill="oklch(48% 0.022 250)" font-family="DM Sans">Shallow feature fusion</text>
+        <line x1="360" y1="226" x2="360" y2="240" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- skip from shallow -->
+        <line x1="70" y1="80" x2="70" y2="258" stroke="oklch(40% 0.022 250)" stroke-width="1" stroke-dasharray="3 2"/>
+        <line x1="70" y1="258" x2="300" y2="258" stroke="oklch(40% 0.022 250)" stroke-width="1" stroke-dasharray="3 2"/>
+
+        <!-- Output -->
+        <rect x="325" y="290" width="72" height="22" rx="3" fill="oklch(65% 0.14 170 / 0.1)" stroke="oklch(65% 0.14 170)"/>
+        <text x="361" y="305" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Segmentation</text>
+        <line x1="360" y1="276" x2="360" y2="290" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Performance badge -->
+        <rect x="20" y="290" width="140" height="22" rx="3" fill="none" stroke="oklch(30% 0.018 250)" stroke-dasharray="3 2"/>
+        <text x="90" y="305" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">410 GFLOPs | 47.38M params</text>
+      </svg>
+    </div>
+
+    <div class="aside">
+      <div class="info-block">
+        <h4>Facts</h4>
+        <div class="meta-line"><span class="label">Released</span><span class="value">May 2026</span></div>
+        <div class="meta-line"><span class="label">Institution</span><span class="value">Beihang University</span></div>
+        <div class="meta-line"><span class="label">Backbone</span><span class="value">State Space Model (Mamba)</span></div>
+        <div class="meta-line"><span class="label">Dice</span><span class="value">91.63 (BraTS); 92.57 (ACDC)</span></div>
+      </div>
+      <div class="source-links">
+        <a href="https://arxiv.org/abs/2605.30972" target="_blank" rel="noopener">Paper <span class="ext">&rarr;</span></a>
+        <a href="https://github.com/bakhtzadaabshare/BiSegMamba" target="_blank" rel="noopener">GitHub <span class="ext">&rarr;</span></a>
+      </div>
+      <div class="pros-cons">
+        <div class="pro"><h4>Strengths</h4><ul>
+          <li>77.9% fewer FLOPs than SegMamba-V2</li>
+          <li>Bidirectional scan removes causal bias</li>
+          <li>Adaptive directional fusion learns scan weights</li>
+          <li>Anisotropic-aware (depth-preserving)</li>
+          <li>Good for elongated/vascular structures</li>
+        </ul></div>
+        <div class="con"><h4>Limitations</h4><ul>
+          <li>No language interface (no prompts, text, etc.)</li>
+          <li>Fixed to segmentation task only</li>
+          <li>Sequence length may limit large volumes</li>
+          <li>Less community adoption than SAM-family</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-label">vs. MicroSAM</div>
+    <p>BiSegMamba uses a pure Mamba state-space backbone whereas MicroSAM builds on a fine-tuned SAM visual encoder. BiSegMamba is ~3x lighter in FLOPs and avoids the transformer's quadratic cost entirely. However, it is segmentation-only &mdash; no promptability, no text, no interactive refinement. BiSegMamba is a strong backbone if you need fast volumetric segmentation; MicroSAM is closer to an interactive foundation model.</p>
+  </div>
+</section>
+
+<!-- 4. SegviGen -->
+<section class="model-section reveal" id="model-segviGen">
+  <div class="model-header">
+    <span class="model-num">04</span>
+    <h2>SegviGen &mdash; Repurposing Generative Models for Part Segmentation</h2>
+  </div>
+  <p class="model-tagline">Turns a pretrained 3D color generative model into a part segmenter, using part-indicative colorization with only 0.32% of labeled training data.</p>
+
+  <div class="model-grid">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 480 290" xmlns="http://www.w3.org/2000/svg">
+        <!-- 3D asset input -->
+        <rect x="30" y="30" width="90" height="60" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="75" y="55" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">3D Asset</text>
+        <text x="75" y="70" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Mesh / Gaussians</text>
+
+        <!-- Generative model -->
+        <rect x="150" y="25" width="120" height="70" rx="4" fill="oklch(70% 0.15 85 / 0.08)" stroke="oklch(70% 0.15 85)" stroke-width="1.5"/>
+        <text x="210" y="48" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">Pretrained 3D</text>
+        <text x="210" y="62" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">Generative Model</text>
+        <text x="210" y="78" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Color prior</text>
+        <line x1="120" y1="60" x2="150" y2="60" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Part colorization -->
+        <rect x="300" y="25" width="130" height="70" rx="4" fill="oklch(65% 0.14 170 / 0.08)" stroke="oklch(65% 0.14 170)" stroke-width="1.5"/>
+        <text x="365" y="48" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">Part-Indicative</text>
+        <text x="365" y="62" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">Colorization</text>
+        <text x="365" y="78" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Voxel-level colors</text>
+        <line x1="270" y1="60" x2="300" y2="60" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- small color swatches -->
+        <circle cx="320" cy="90" r="4" fill="#E07A5F"/>
+        <circle cx="340" cy="90" r="4" fill="#3D84A8"/>
+        <circle cx="360" cy="90" r="4" fill="#98D8C8"/>
+        <circle cx="380" cy="90" r="4" fill="#F7C59F"/>
+        <circle cx="400" cy="90" r="4" fill="#6A4C93"/>
+
+        <!-- Segmentation output -->
+        <rect x="315" y="120" width="130" height="46" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="380" y="140" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Part Segmentation</text>
+        <text x="380" y="154" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Per-voxel label</text>
+        <line x1="365" y1="95" x2="365" y2="120" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Optional 2D guidance -->
+        <rect x="30" y="150" width="120" height="40" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)" stroke-dasharray="3 2"/>
+        <text x="90" y="168" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">Optional 2D Guidance</text>
+        <text x="90" y="182" text-anchor="middle" font-size="8" fill="oklch(48% 0.022 250)" font-family="DM Sans">Multi-view masks</text>
+        <line x1="150" y1="170" x2="380" y2="166" stroke="oklch(40% 0.022 250)" stroke-width="0.8" stroke-dasharray="3 2"/>
+
+        <!-- Data efficiency callout -->
+        <rect x="280" y="200" width="165" height="36" rx="3" fill="none" stroke="oklch(65% 0.14 170)" stroke-dasharray="3 2"/>
+        <text x="362" y="216" text-anchor="middle" font-size="9.5" fill="oklch(65% 0.14 170)" font-family="DM Sans">Trained with</text>
+        <text x="362" y="228" text-anchor="middle" font-size="11" fill="oklch(70% 0.15 85)" font-family="Newsreader">0.32% labeled data</text>
+
+        <!-- Mode labels -->
+        <text x="75" y="125" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Modes:</text>
+        <text x="75" y="136" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">&bull; Interactive part</text>
+        <text x="75" y="147" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">&bull; Full segmentation</text>
+      </svg>
+    </div>
+
+    <div class="aside">
+      <div class="info-block">
+        <h4>Facts</h4>
+        <div class="meta-line"><span class="label">Released</span><span class="value">Mar 2026</span></div>
+        <div class="meta-line"><span class="label">Institution</span><span class="value">Beihang University</span></div>
+        <div class="meta-line"><span class="label">Backbone</span><span class="value">Pretrained 3D generative prior</span></div>
+        <div class="meta-line"><span class="label">Key gain</span><span class="value">40% improvement (interactive)</span></div>
+      </div>
+      <div class="source-links">
+        <a href="https://arxiv.org/abs/2603.16869" target="_blank" rel="noopener">Paper <span class="ext">&rarr;</span></a>
+        <a href="https://fenghora.github.io/SegviGen-Page/" target="_blank" rel="noopener">Project <span class="ext">&rarr;</span></a>
+      </div>
+      <div class="pros-cons">
+        <div class="pro"><h4>Strengths</h4><ul>
+          <li>Extremely data-efficient (0.32% labels)</li>
+          <li>Natively supports interactive and full modes</li>
+          <li>Optional 2D guidance for refinement</li>
+          <li>Part segmentation without part vocabularies</li>
+        </ul></div>
+        <div class="con"><h4>Limitations</h4><ul>
+          <li>Requires pretrained 3D generative model</li>
+          <li>Not designed for medical images (natural objects)</li>
+          <li>Single prompt type (point-based)</li>
+          <li>Colorization adds inference overhead</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-label">vs. MicroSAM</div>
+    <p>SegviGen and MicroSAM have opposite strengths. MicroSAM is medical-first, point/box promptable, and segment-anything styled. SegviGen is built for general 3D assets (not medical) and relies on generative-model priors for part segmentation. MicroSAM is the more suitable choice for medical images; SegviGen may inspire future medical adaptations.</p>
+  </div>
+</section>
+
+<!-- 5. VoxTell -->
+<section class="model-section reveal" id="model-voxtell">
+  <div class="model-header">
+    <span class="model-num">05</span>
+    <h2>VoxTell &mdash; Free-Text Promptable Universal 3D Segmentation</h2>
+  </div>
+  <p class="model-tagline">Vision-language model trained on 62K+ CT/MRI/PET volumes and 1K+ anatomical classes that maps free-form text descriptions directly to 3D masks.</p>
+
+  <div class="model-grid">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 480 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="vox-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Inputs -->
+        <rect x="20" y="50" width="110" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="75" y="70" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">CT / MRI / PET</text>
+        <text x="75" y="86" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Volumetric scan</text>
+
+        <rect x="20" y="115" width="110" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="75" y="135" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">Free-form Text</text>
+        <text x="75" y="151" text-anchor="middle" font-size="9" fill="oklch(48% 0.022 250)" font-family="DM Sans" font-style="italic">"liver tumor"</text>
+
+        <!-- Fusion block -->
+        <rect x="170" y="40" width="140" height="140" rx="6" fill="url(#vox-grad)" stroke="oklch(70% 0.15 85)" stroke-width="1.5"/>
+        <text x="240" y="64" text-anchor="middle" font-size="11" fill="oklch(95% 0.008 250)" font-family="Newsreader">Multi-Stage Fusion</text>
+        <text x="240" y="80" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">Vision-language alignment</text>
+
+        <!-- multi-scale fusion stages -->
+        <line x1="190" y1="96" x2="290" y2="96" stroke="oklch(30% 0.018 250)" stroke-width="0.5"/>
+        <text x="195" y="110" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Low-res</text>
+        <line x1="190" y1="120" x2="290" y2="120" stroke="oklch(30% 0.018 250)" stroke-width="0.5"/>
+        <text x="195" y="134" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Mid-res</text>
+        <line x1="190" y1="144" x2="290" y2="144" stroke="oklch(30% 0.018 250)" stroke-width="0.5"/>
+        <text x="195" y="158" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">High-res</text>
+
+        <line x1="130" y1="75" x2="170" y2="85" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+        <line x1="130" y1="140" x2="170" y2="125" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Decoder -->
+        <rect x="350" y="70" width="100" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="400" y="92" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">3D Decoder</text>
+        <text x="400" y="108" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Volumetric output</text>
+        <line x1="310" y1="110" x2="350" y2="95" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Output mask -->
+        <rect x="350" y="170" width="100" height="40" rx="4" fill="oklch(65% 0.14 170 / 0.1)" stroke="oklch(65% 0.14 170)"/>
+        <text x="400" y="194" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">3D Mask</text>
+        <line x1="400" y1="120" x2="400" y2="170" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Data scale -->
+        <text x="240" y="215" text-anchor="middle" font-size="9.5" fill="oklch(70% 0.15 85)" font-family="DM Sans">Training scale: 62K+ volumes</text>
+        <text x="240" y="229" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">1000+ anatomical &amp; pathological classes</text>
+
+        <!-- Cross-modality arrows -->
+        <text x="400" y="156" text-anchor="middle" font-size="8" fill="oklch(48% 0.022 250)" font-family="DM Sans">CT</text>
+        <text x="414" y="156" text-anchor="middle" font-size="8" fill="oklch(48% 0.022 250)" font-family="DM Sans">MR</text>
+        <text x="428" y="156" text-anchor="middle" font-size="8" fill="oklch(48% 0.022 250)" font-family="DM Sans">PET</text>
+      </svg>
+    </div>
+
+    <div class="aside">
+      <div class="info-block">
+        <h4>Facts</h4>
+        <div class="meta-line"><span class="label">Released</span><span class="value">Nov 2025</span></div>
+        <div class="meta-line"><span class="label">Institution</span><span class="value">MIC-DKFZ</span></div>
+        <div class="meta-line"><span class="label">Data</span><span class="value">62K+ volumes, 1K+ classes</span></div>
+        <div class="meta-line"><span class="label">Modalities</span><span class="value">CT, MRI, PET</span></div>
+      </div>
+      <div class="source-links">
+        <a href="https://github.com/MIC-DKFZ/VoxTell" target="_blank" rel="noopener">GitHub <span class="ext">&rarr;</span></a>
+      </div>
+      <div class="pros-cons">
+        <div class="pro"><h4>Strengths</h4><ul>
+          <li>Cross-modality (CT + MRI + PET)</li>
+          <li>Zero-shot generalization to unseen classes</li>
+          <li>Free-text both single-word and full clinical sentences</li>
+          <li>Robust to linguistic variation</li>
+        </ul></div>
+        <div class="con"><h4>Limitations</h4><ul>
+          <li>Not interactive (no point/box refinement in free-text mode)</li>
+          <li>Without prompts, accuracy drops</li>
+          <li>Large model with steep GPU requirements</li>
+          <li>No support for video or 4D data</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-label">vs. MicroSAM</div>
+    <p>VoxTell extends free-text prompting beyond what MicroSAM offers &mdash; it works across CT, MRI, and PET, supports 1K+ classes zero-shot, and handles rich clinical language. MicroSAM is purely spatial-prompt-based (points/boxes) and limited to the classes or volumes it was fine-tuned on. Choose VoxTell for open-vocabulary universality; MicroSAM for precise spatial prompting with lighter compute.</p>
+  </div>
+</section>
+
+<!-- 6. FDIF -->
+<section class="model-section reveal" id="model-fdif">
+  <div class="model-header">
+    <span class="model-num">06</span>
+    <h2>FDIF &mdash; Formula-Driven Implicit Functions</h2>
+  </div>
+  <p class="model-tagline">Pre-trains 3D segmentation networks with zero real medical images or expert annotations. Synthesizes geometry and texture using signed distance function (SDF) formulas.</p>
+
+  <div class="model-grid">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 480 280" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="fdif-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="oklch(65% 0.14 170)" stop-opacity="0.1"/>
+            <stop offset="100%" stop-color="oklch(65% 0.14 170)" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Mathematical formulas -->
+        <rect x="20" y="50" width="110" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="75" y="68" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">Mathematical</text>
+        <text x="75" y="80" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">Formulas (SDF)</text>
+
+        <!-- Synthesized data -->
+        <rect x="170" y="40" width="120" height="70" rx="4" fill="url(#fdif-grad)" stroke="oklch(65% 0.14 170)" stroke-width="1.5"/>
+        <text x="230" y="64" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">Synthesized</text>
+        <text x="230" y="78" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">Training Data</text>
+        <text x="230" y="94" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Geometry + intensity</text>
+        <line x1="130" y1="75" x2="170" y2="75" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <rect x="320" y="50" width="130" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="385" y="70" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Pre-trained Network</text>
+        <text x="385" y="84" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">SwinUNETR / nnUNet</text>
+        <line x1="290" y1="75" x2="320" y2="75" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Real data finetuning -->
+        <rect x="320" y="130" width="130" height="50" rx="4" fill="oklch(70% 0.15 85 / 0.08)" stroke="oklch(70% 0.15 85)"/>
+        <text x="385" y="150" text-anchor="middle" font-size="10" fill="oklch(95% 0.008 250)" font-family="DM Sans">Finetune</text>
+        <text x="385" y="164" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Few real labeled volumes</text>
+        <line x1="385" y1="100" x2="385" y2="130" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Output -->
+        <rect x="320" y="200" width="130" height="36" rx="3" fill="oklch(65% 0.14 170 / 0.1)" stroke="oklch(65% 0.14 170)"/>
+        <text x="385" y="222" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Segmentation Output</text>
+        <line x1="385" y1="180" x2="385" y2="200" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Badge: zero real data -->
+        <rect x="20" y="200" width="160" height="36" rx="3" fill="none" stroke="oklch(65% 0.14 170)" stroke-dasharray="3 2"/>
+        <text x="100" y="216" text-anchor="middle" font-size="9.5" fill="oklch(65% 0.14 170)" font-family="DM Sans">Pre-training uses</text>
+        <text x="100" y="228" text-anchor="middle" font-size="11" fill="oklch(70% 0.15 85)" font-family="Newsreader">zero real images</text>
+
+        <!-- Benchmarks -->
+        <text x="230" y="150" text-anchor="middle" font-size="8.5" fill="oklch(60% 0.022 250)" font-family="DM Sans">Validated on:</text>
+        <text x="230" y="162" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">AMOS, ACDC, KiTS</text>
+      </svg>
+    </div>
+
+    <div class="aside">
+      <div class="info-block">
+        <h4>Facts</h4>
+        <div class="meta-line"><span class="label">Released</span><span class="value">Apr 2026</span></div>
+        <div class="meta-line"><span class="label">Institution</span><span class="value">Multiple (Kitasato, RIKEN, etc.)</span></div>
+        <div class="meta-line"><span class="label">Pre-training data</span><span class="value">Zero real medical images</span></div>
+        <div class="meta-line"><span class="label">Representation</span><span class="value">SDFs (implicit)</span></div>
+      </div>
+      <div class="source-links">
+        <a href="https://arxiv.org/abs/2603.23199" target="_blank" rel="noopener">Paper <span class="ext">&rarr;</span></a>
+        <a href="https://github.com/yamanoko/FDIF" target="_blank" rel="noopener">GitHub <span class="ext">&rarr;</span></a>
+      </div>
+      <div class="pros-cons">
+        <div class="pro"><h4>Strengths</h4><ul>
+          <li>No real data or expert annot needed for pre-training</li>
+          <li>Matches self-supervised methods pre-trained on large real datasets</li>
+          <li>Generalizes to classification as well</li>
+          <li>Surface-voxel representational richness over polygon meshes</li>
+        </ul></div>
+        <div class="con"><h4>Limitations</h4><ul>
+          <li>Still needs some labeled real data for downstream fine-tuning</li>
+          <li>Controllable synthesis requires careful formula design</li>
+          <li>Slower to synthesize diverse textures than real data pre-training</li>
+          <li>Not interactive or promptable</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-label">vs. MicroSAM</div>
+    <p>FDIF is a complementary paradigm, not a competitor. It shows that you can pre-train a segmentation network &mdash; potentially even the SAM backbone MicroSAM relies on &mdash; without ever touching real patient data. This is valuable for privacy-sensitive settings. MicroSAM uses real medical annotated data from the start; FDIF opens the door to pre-training on purely synthetic supervision.</p>
+  </div>
+</section>
+
+<!-- 7. MedSAM3 -->
+<section class="model-section reveal" id="model-medsam3">
+  <div class="model-header">
+    <span class="model-num">07</span>
+    <h2>MedSAM3 &mdash; Segment Anything With Medical Concepts</h2>
+  </div>
+  <p class="model-tagline">The latest generation of the MedSAM family that takes SAM-style volumetric segmentation deeper into medical concept understanding.</p>
+
+  <div class="model-grid">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 480 280" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="medsam3-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+
+        <!-- SAM architecture baseline -->
+        <rect x="30" y="40" width="110" height="60" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="85" y="62" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">Image Encoder</text>
+        <text x="85" y="76" text-anchor="middle" font-size="9" fill="oklch(48% 0.022 250)" font-family="DM Sans">SAM ViT (frozen)</text>
+
+        <!-- Prompt encoder -->
+        <rect x="30" y="120" width="110" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="85" y="140" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">Prompt Encoder</text>
+        <text x="85" y="156" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Points / Boxes</text>
+
+        <!-- MedSAM wrapper adding medical concepts -->
+        <rect x="175" y="30" width="170" height="155" rx="6" fill="url(#medsam3-grad)" stroke="oklch(70% 0.15 85)" stroke-width="1.5"/>
+        <text x="260" y="52" text-anchor="middle" font-size="11" fill="oklch(95% 0.008 250)" font-family="Newsreader">MedSAM3 Adapter</text>
+
+        <!-- inside overlay -->
+        <rect x="195" y="65" width="130" height="32" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(40% 0.022 250)"/>
+        <text x="260" y="80" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">Medical concept</text>
+        <text x="260" y="92" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">embedding overlays</text>
+
+        <rect x="195" y="105" width="130" height="32" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(40% 0.022 250)"/>
+        <text x="260" y="120" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">Domain-adaptive</text>
+        <text x="260" y="132" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">feature calibration</text>
+
+        <rect x="195" y="145" width="130" height="30" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(40% 0.022 250)"/>
+        <text x="260" y="160" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">Anatomy-conditioned</text>
+        <text x="260" y="172" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">mask decoding</text>
+
+        <!-- Arrow inputs into block -->
+        <line x1="140" y1="70" x2="175" y2="70" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+        <line x1="140" y1="145" x2="175" y2="120" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Mask decoder -->
+        <rect x="365" y="80" width="90" height="40" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="410" y="98" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Mask Decoder</text>
+        <text x="410" y="112" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">3D mask</text>
+        <line x1="345" y1="100" x2="365" y2="100" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Output -->
+        <rect x="365" y="150" width="90" height="36" rx="3" fill="oklch(65% 0.14 170 / 0.1)" stroke="oklch(65% 0.14 170)"/>
+        <text x="410" y="172" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">3D Segmentation</text>
+        <line x1="410" y1="120" x2="410" y2="150" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Intended use note -->
+        <text x="260" y="220" text-anchor="middle" font-size="9.5" fill="oklch(70% 0.15 85)" font-family="DM Sans">Built on SAM/SAM2 architecture</text>
+        <text x="260" y="234" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">Not a VLM - focused on spatial prompting</text>
+      </svg>
+    </div>
+
+    <div class="aside">
+      <div class="info-block">
+        <h4>Facts</h4>
+        <div class="meta-line"><span class="label">Released</span><span class="value">Nov 2025</span></div>
+        <div class="meta-line"><span class="label">Authors</span><span class="value">A. Liu, R. Xue, X.R. Cao et al.</span></div>
+        <div class="meta-line"><span class="label">Backbone</span><span class="value">SAM / SAM2 family</span></div>
+        <div class="meta-line"><span class="label">Key Feature</span><span class="value">Medical concept integration</span></div>
+      </div>
+      <div class="source-links">
+        <a href="https://arxiv.org/abs/2511.19046" target="_blank" rel="noopener">Paper <span class="ext">&rarr;</span></a>
+        <a href="https://github.com/Joey-S-Liu/MedSAM3" target="_blank" rel="noopener">GitHub <span class="ext">&rarr;</span></a>
+      </div>
+      <div class="pros-cons">
+        <div class="pro"><h4>Strengths</h4><ul>
+          <li>Continues MedSAM lineage (strong baseline)</li>
+          <li>Supports point/box prompts like SAM</li>
+          <li>Adds medical concept understanding to mask decoder</li>
+          <li>Interoperable with SAM-family tooling</li>
+        </ul></div>
+        <div class="con"><h4>Limitations</h4><ul>
+          <li>No multi-task (text/VQA/segmentation) support</li>
+          <li>Less publicly documented than MedSAM2</li>
+          <li>Still limited to SAM encoder architecture</li>
+          <li>Slight improvements may not justify migration</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-label">vs. MicroSAM</div>
+    <p>MedSAM3 and MicroSAM sit in the same prompt-based segmentation lineage. MedSAM3 adds medical concept embedding layers between the SAM encoder and decoder. MicroSAM is more of a direct fine-tune of SAM on 3D medical data. MedSAM3 is expected to outperform MicroSAM slightly on concept-poor or rare anatomy due to its added domain calibration, but they are architecturally very similar.</p>
+  </div>
+</section>
+
+<!-- 8. P3-SAM -->
+<section class="model-section reveal" id="model-p3-sam">
+  <div class="model-header">
+    <span class="model-num">08</span>
+    <h2>P3-SAM &mdash; Native 3D Part Segmentation</h2>
+  </div>
+  <p class="model-tagline">Native 3D point-prompted part segmentation model for any 3D objects, trained on a dataset of ~3.7 million models. Not medical-specific.</p>
+
+  <div class="model-grid">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 480 260" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="p3-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="oklch(70% 0.15 85)" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Input -->
+        <rect x="30" y="40" width="110" height="50" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="85" y="60" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 50)" font-family="DM Sans">Any 3D Object</text>
+        <text x="85" y="74" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Point cloud / mesh</text>
+
+        <!-- Point prompt -->
+        <rect x="30" y="105" width="110" height="40" rx="4" fill="oklch(16% 0.015 250)" stroke="oklch(30% 0.018 250)"/>
+        <text x="85" y="122" text-anchor="middle" font-size="10" fill="oklch(60% 0.022 250)" font-family="DM Sans">3D Point Prompt</text>
+        <text x="85" y="136" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Single click in 3D</text>
+
+        <!-- Main model block -->
+        <rect x="175" y="25" width="180" height="150" rx="6" fill="url(#p3-grad)" stroke="oklch(70% 0.15 85)" stroke-width="1.5"/>
+        <text x="265" y="48" text-anchor="middle" font-size="11" fill="oklch(95% 0.008 250)" font-family="Newsreader">P3-SAM Architecture</text>
+
+        <rect x="195" y="60" width="140" height="30" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(40% 0.022 250)"/>
+        <text x="265" y="73" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">Native 3D Feature</text>
+        <text x="265" y="85" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Extractor</text>
+
+        <rect x="195" y="98" width="140" height="30" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(40% 0.022 250)"/>
+        <text x="265" y="111" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">Multiple Mask</text>
+        <text x="265" y="123" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Heads</text>
+
+        <rect x="195" y="136" width="140" height="30" rx="3" fill="oklch(16% 0.015 250)" stroke="oklch(40% 0.022 250)"/>
+        <text x="265" y="149" text-anchor="middle" font-size="9" fill="oklch(85% 0.012 250)" font-family="DM Sans">IoU Predictor</text>
+        <text x="265" y="161" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Auto-merge algo</text>
+
+        <line x1="140" y1="65" x2="175" y2="65" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+        <line x1="140" y1="125" x2="175" y2="110" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Auto merge -->
+        <rect x="375" y="70" width="90" height="40" rx="3" fill="oklch(65% 0.14 170 / 0.08)" stroke="oklch(65% 0.14 170)"/>
+        <text x="420" y="88" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Auto-Merge</text>
+        <text x="420" y="102" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">Mask selection</text>
+        <line x1="355" y1="100" x2="375" y2="90" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Output -->
+        <rect x="365" y="140" width="105" height="36" rx="3" fill="oklch(65% 0.14 170 / 0.1)" stroke="oklch(65% 0.14 170)"/>
+        <text x="417" y="162" text-anchor="middle" font-size="10" fill="oklch(85% 0.012 250)" font-family="DM Sans">Part Instances</text>
+        <line x1="420" y1="110" x2="420" y2="140" stroke="oklch(40% 0.022 250)" stroke-width="1"/>
+
+        <!-- Training scale -->
+        <text x="265" y="205" text-anchor="middle" font-size="9.5" fill="oklch(70% 0.15 85)" font-family="DM Sans">3.7M models trained</text>
+        <text x="265" y="219" text-anchor="middle" font-size="9" fill="oklch(60% 0.022 250)" font-family="DM Sans">From Tencent Hunyuan</text>
+        <text x="265" y="233" text-anchor="middle" font-size="8.5" fill="oklch(48% 0.022 250)" font-family="DM Sans">NOT medical images</text>
+      </svg>
+    </div>
+
+    <div class="aside">
+      <div class="info-block">
+        <h4>Facts</h4>
+        <div class="meta-line"><span class="label">Released</span><span class="value">Sep 2025</span></div>
+        <div class="meta-line"><span class="label">Provider</span><span class="value">Tencent Hunyuan</span></div>
+        <div class="meta-line"><span class="label">Data</span><span class="value">~3.7M 3D models</span></div>
+        <div class="meta-line"><span class="label">Task</span><span class="value">3D part segmentation</span></div>
+      </div>
+      <div class="source-links">
+        <a href="https://arxiv.org/abs/2509.06784" target="_blank" rel="noopener">Paper <span class="ext">&rarr;</span></a>
+        <a href="https://murcherful.github.io/P3-SAM/" target="_blank" rel="noopener">Project <span class="ext">&rarr;</span></a>
+      </div>
+      <div class="pros-cons">
+        <div class="pro"><h4>Strengths</h4><ul>
+          <li>Massive training data scale for 3D understanding</li>
+          <li>Any 3D object compatible (not limited to medical)</li>
+          <li>Native 3D operation (not slice-by-slice)</li>
+          <li>Robust across complex poly objects</li>
+        </ul></div>
+        <div class="con"><h4>Limitations</h4><ul>
+          <li>Not trained or validated on medical data</li>
+          <li>No point-cloud medical modality support (CT/MRI)</li>
+          <li>Limited information on benchmarks</li>
+          <li>Chinese-only documentation as of release</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-label">vs. MicroSAM</div>
+    <p>P3-SAM is best understood as a non-medical cousin of the MicroSAM approach: point-prompted, 3D-native segmentation. Neither model is useful on the other's domain without fine-tuning. MicroSAM wins for CT/MRI medical imaging; P3-SAM wins for generic 3D assets.</p>
+  </div>
+</section>
+
+<!-- COMPARISON MATRIX -->
+<section class="matrix-section reveal" id="matrix">
+  <h2>Field Comparison</h2>
+  <p class="lede">Across eight dimensions that matter when replacing or extending a MicroSAM-style pipeline.</p>
+
+  <div class="table-wrap">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th></th>
+          <th>SEER</th>
+          <th>MedVL-SAM2</th>
+          <th>BiSegMamba</th>
+          <th>VoxTell</th>
+          <th>FDIF</th>
+          <th>MedSAM3</th>
+          <th>MicroSAM</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="feature-name">Prompt type</td>
+          <td>Free-text</td>
+          <td>Text + point + box</td>
+          <td>None (auto)</td>
+          <td>Free-text</td>
+          <td>None (auto)</td>
+          <td>Point + box</td>
+          <td>Point + box</td>
+        </tr>
+        <tr>
+          <td class="feature-name">Architecture</td>
+          <td>VLM + frozen seg</td>
+          <td>VLM + SAM2</td>
+          <td>Mamba SSM</td>
+          <td>Vision-language</td>
+          <td>Synthetic SDF</td>
+          <td>SAM-family</td>
+          <td>SAM-family</td>
+        </tr>
+        <tr>
+          <td class="feature-name">Multi-task</td>
+          <td class="cell-partial">Reasoning front-end</td>
+          <td class="cell-good">Multi-task</td>
+          <td class="cell-bad">Segmentation only</td>
+          <td class="cell-partial">Text only</td>
+          <td class="cell-bad">Pre-training only</td>
+          <td class="cell-bad">Segmentation only</td>
+          <td class="cell-bad">Segmentation only</td>
+        </tr>
+        <tr>
+          <td class="feature-name">Efficiency</td>
+          <td class="cell-partial">Moderate</td>
+          <td class="cell-note">Heavy (4B LLM)</td>
+          <td class="cell-good">Very efficient</td>
+          <td class="cell-note">Moderate</td>
+          <td class="cell-good">Lightweight U-Net</td>
+          <td class="cell-partial">Moderate</td>
+          <td class="cell-partial">Moderate</td>
+        </tr>
+        <tr>
+          <td class="feature-name">Open-vocabulary</td>
+          <td class="cell-good">Free-form</td>
+          <td class="cell-good">Flexible text</td>
+          <td class="cell-bad">Classes only</td>
+          <td class="cell-good">1K+ classes</td>
+          <td class="cell-bad">Fixed pre-train</td>
+          <td class="cell-partial">Uses points</td>
+          <td class="cell-partial">Uses points</td>
+        </tr>
+        <tr>
+          <td class="feature-name">Training footprint</td>
+          <td class="cell-note">22K SEER-Trace</td>
+          <td class="cell-note">CT-RATE + M3D</td>
+          <td class="cell-good">From scratch</td>
+          <td class="cell-note">62K volumes</td>
+          <td class="cell-good">Zero real data</td>
+          <td class="cell-note">~143K masks</td>
+          <td class="cell-note">~455K pairs</td>
+        </tr>
+        <tr>
+          <td class="feature-name">Best use case</td>
+          <td>Language-ambiguous prompts</td>
+          <td>Workflows needing QA + seg</td>
+          <td>Fast deployment, GPU-poor</td>
+          <td>Universal zero-shot</td>
+          <td>Privacy-preserving research</td>
+          <td>Upgraded point-prompted seg</td>
+          <td>Interactive point/box seg</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- MICROSAM SECTION -->
+<section class="reveal" id="microsam-ref" style="padding-top: 64px; padding-bottom: 88px;">
+  <div class="microsam">
+    <h3>Where MicroSAM stands today</h3>
+    <p class="ms-tagline">MicroSAM remains strong. The question for your project is not "which is best" but "which problem are you solving now."</p>
+    <div class="ms-grid">
+      <div class="block">
+        <h4>MicroSAM strengths</h4>
+        <p>Point and box promptable, fine-tuned on real CT/MRI volumes, interactive through SAM's proven interface, battle-tested across dozens of downstream tasks.</p>
+      </div>
+      <div class="block">
+        <h4>Where newer models win</h4>
+        <p>Free-text prompting (SEER, VoxTell, MedVL-SAM2), multi-task unification (MedVL-SAM2), data-free pre-training (FDIF), lighter compute (BiSegMamba), or broader zero-shot coverage (VoxTell).</p>
+      </div>
+      <div class="block">
+        <h4>Stay with MicroSAM when</h4>
+        <p>You need precise spatial prompting, want to minimize dependencies, operate on single-modality medical volumes, and prefer a pipeline that is well-documented and community-supported.</p>
+      </div>
+      <div class="block">
+        <h4>Migrate when</h4>
+        <p>You need free-text input, interactive reasoning and answer generation alongside masks, lower compute for batch processing, or zero-shot across CT/MRI/PET without retraining.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<footer class="page-footer">
+  <div class="page">
+    <span>Compiled July 2026 from Hugging Face public pages and arxiv preprints. Model data, architectures, and benchmarks verified against cited papers. Figures represent reported performance; your mileage will vary with data and domain shift. No endorsement of any specific model.</span>
+  </div>
+</footer>
+
+<script>
+const reveals = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -60px 0px' });
+reveals.forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
