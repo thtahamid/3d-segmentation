@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAM2 vs micro-SAM &amp; the New 3D Segmentation Frontier — Deep Dive</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#080b13; --bg2:#0d1220; --surface:rgba(255,255,255,.04); --surface-hi:rgba(255,255,255,.075);
+  --border:rgba(255,255,255,.09); --border-hi:rgba(255,255,255,.18);
+  --text:#e7ebf3; --text-dim:#9aa5b8; --text-faint:#5f6b80;
+  --meta:#5aa2ff; --meta-glow:rgba(90,162,255,.35);
+  --microsam:#f472b6; --microsam-glow:rgba(244,114,182,.35);
+  --medical:#34d399; --medical-glow:rgba(52,211,153,.32);
+  --micro:#fbbf24; --micro-glow:rgba(251,191,36,.32);
+  --new:#a78bfa; --new-glow:rgba(167,139,250,.32);
+  --danger:#fb7185; --code-bg:#060a12;
+  --r-lg:1.1rem; --r-md:.7rem; --r-sm:.4rem;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(90,162,255,.16), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 100% 10%, rgba(244,114,182,.12), transparent 55%),
+    radial-gradient(ellipse 800px 500px at 50% 100%, rgba(52,211,153,.08), transparent 55%),
+    var(--bg);
+  color:var(--text); min-height:100vh; line-height:1.65;
+}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif; letter-spacing:-.01em;}
+code, .mono, .code-block, .cheat-table td.mono{font-family:'JetBrains Mono',monospace;}
+a{color:var(--meta);}
+::selection{background:var(--meta-glow);}
+
+/* ---------- Top bridge bar ---------- */
+.bridge-bar{
+  background:linear-gradient(90deg, rgba(90,162,255,.14), rgba(244,114,182,.1));
+  border-bottom:1px solid var(--border); padding:.65rem 1.5rem; text-align:center;
+  font-size:.85rem; color:var(--text-dim); position:sticky; top:0; z-index:200; backdrop-filter:blur(14px);
+}
+.bridge-bar a{color:var(--meta); font-weight:600; text-decoration:none;}
+.bridge-bar a:hover{text-decoration:underline;}
+
+/* ---------- Header ---------- */
+.header{ padding:4.5rem 1.5rem 3.5rem; text-align:center; position:relative; overflow:hidden;}
+.header::before{
+  content:''; position:absolute; inset:0; z-index:-1; opacity:.5;
+  background-image:
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size:42px 42px;
+  mask-image:radial-gradient(ellipse 700px 400px at 50% 20%, black, transparent 75%);
+}
+.eyebrow{
+  display:inline-flex; align-items:center; gap:.5rem; font-size:.78rem; font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--microsam); background:rgba(244,114,182,.1);
+  border:1px solid rgba(244,114,182,.3); padding:.4rem 1rem; border-radius:2rem; margin-bottom:1.5rem;
+}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--microsam); box-shadow:0 0 8px var(--microsam); animation:pulse-dot 2s infinite;}
+@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:.3;}}
+.header h1{
+  font-size:clamp(2rem, 5vw, 3.4rem); font-weight:700; max-width:900px; margin:0 auto 1.25rem; line-height:1.12;
+  background:linear-gradient(135deg,#fff 30%, var(--meta) 65%, var(--microsam) 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.header .subtitle{max-width:680px; margin:0 auto 2rem; color:var(--text-dim); font-size:1.05rem;}
+.header-stats{display:flex; justify-content:center; gap:.75rem; flex-wrap:wrap;}
+.hstat{background:var(--surface); border:1px solid var(--border); padding:.55rem 1.1rem; border-radius:2rem; font-size:.82rem; color:var(--text-dim);}
+.hstat strong{color:var(--text); font-family:'Space Grotesk',sans-serif;}
+
+/* ---------- Nav ---------- */
+.nav-wrap{position:sticky; top:41px; z-index:150; background:rgba(8,11,19,.82); backdrop-filter:blur(16px); border-bottom:1px solid var(--border);}
+.nav-tabs{display:flex; gap:.3rem; padding:.6rem 1rem; overflow-x:auto; max-width:1400px; margin:0 auto;}
+.nav-tab{
+  padding:.6rem 1.1rem; border:1px solid transparent; background:transparent; color:var(--text-dim);
+  font-size:.85rem; font-weight:600; border-radius:.6rem; cursor:pointer; white-space:nowrap; transition:.15s;
+  font-family:'Inter',sans-serif; display:flex; align-items:center; gap:.4rem;
+}
+.nav-tab:hover{color:var(--text); background:var(--surface);}
+.nav-tab.active{color:#fff; background:var(--surface-hi); border-color:var(--border-hi);}
+
+/* ---------- Layout ---------- */
+.main{max-width:1360px; margin:0 auto; padding:2.5rem 1.25rem 5rem;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block; animation:fadein .4s ease;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);}to{opacity:1; transform:translateY(0);}}
+
+.section-lead{max-width:820px; margin-bottom:2rem;}
+.section-lead h2{font-size:1.7rem; margin-bottom:.6rem; display:flex; align-items:center; gap:.6rem;}
+.section-lead p{color:var(--text-dim);}
+
+.grid{display:grid; gap:1.25rem;}
+.grid-2{grid-template-columns:repeat(auto-fit,minmax(360px,1fr));}
+.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+.grid-4{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
+
+/* ---------- Cards ---------- */
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:1.6rem;
+  backdrop-filter:blur(10px); position:relative; overflow:hidden;
+}
+.card::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(135deg, rgba(255,255,255,.12), transparent 40%); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;}
+
+.stat-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:2rem;}
+.stat-tile{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:1.1rem 1.2rem; text-align:center;}
+.stat-tile .num{font-family:'Space Grotesk',sans-serif; font-size:1.9rem; font-weight:700; color:var(--meta);}
+.stat-tile .lbl{font-size:.76rem; color:var(--text-dim); margin-top:.15rem;}
+.stat-tile:nth-child(2) .num{color:var(--microsam);}
+.stat-tile:nth-child(3) .num{color:var(--medical);}
+.stat-tile:nth-child(4) .num{color:var(--new);}
+.stat-tile:nth-child(5) .num{color:var(--micro);}
+
+/* Callouts */
+.callout{border-left:3px solid var(--meta); background:rgba(90,162,255,.07); border-radius:0 var(--r-md) var(--r-md) 0; padding:1.1rem 1.3rem; margin:1.1rem 0;}
+.callout.pink{border-color:var(--microsam); background:rgba(244,114,182,.07);}
+.callout.green{border-color:var(--medical); background:rgba(52,211,153,.07);}
+.callout.amber{border-color:var(--micro); background:rgba(251,191,36,.07);}
+.callout.purple{border-color:var(--new); background:rgba(167,139,250,.07);}
+.callout h4{font-size:.95rem; margin-bottom:.4rem; display:flex; align-items:center; gap:.4rem;}
+.callout p{color:var(--text-dim); font-size:.92rem;}
+.callout p + p{margin-top:.5rem;}
+
+/* Badges */
+.badge{display:inline-block; font-size:.68rem; font-weight:700; letter-spacing:.02em; padding:.2rem .6rem; border-radius:1rem; text-transform:uppercase;}
+.badge.meta{background:rgba(90,162,255,.15); color:var(--meta); border:1px solid rgba(90,162,255,.3);}
+.badge.microsam{background:rgba(244,114,182,.15); color:var(--microsam); border:1px solid rgba(244,114,182,.3);}
+.badge.medical{background:rgba(52,211,153,.15); color:var(--medical); border:1px solid rgba(52,211,153,.3);}
+.badge.new{background:rgba(167,139,250,.15); color:var(--new); border:1px solid rgba(167,139,250,.3);}
+.badge.micro{background:rgba(251,191,36,.15); color:var(--micro); border:1px solid rgba(251,191,36,.3);}
+.badge.evidence-direct{background:rgba(52,211,153,.15); color:var(--medical);}
+.badge.evidence-indirect{background:rgba(251,191,36,.15); color:var(--micro);}
+.badge.evidence-synth{background:rgba(251,113,133,.15); color:var(--danger);}
+.date-chip{font-size:.72rem; color:var(--text-faint); font-family:'JetBrains Mono',monospace;}
+
+/* Model card */
+.model-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:1.35rem; transition:.2s;}
+.model-card:hover{border-color:var(--border-hi); transform:translateY(-2px); box-shadow:0 10px 30px -12px rgba(0,0,0,.5);}
+.model-card .mc-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:.5rem; gap:.5rem;}
+.model-card h3{font-size:1.05rem;}
+.model-card h3 a{color:inherit; text-decoration:none;}
+.model-card h3 a:hover{color:var(--meta);}
+.model-card p{color:var(--text-dim); font-size:.88rem; margin:.5rem 0;}
+.mc-links{display:flex; gap:.6rem; flex-wrap:wrap; margin:.6rem 0;}
+.mc-links a{font-size:.78rem; color:var(--text); background:var(--surface-hi); border:1px solid var(--border); padding:.28rem .7rem; border-radius:.4rem; text-decoration:none; display:inline-flex; gap:.3rem; align-items:center;}
+.mc-links a:hover{border-color:var(--border-hi); color:var(--meta);}
+.kw{display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.6rem;}
+.kw span{font-size:.68rem; background:rgba(255,255,255,.05); border:1px solid var(--border); padding:.15rem .55rem; border-radius:1rem; color:var(--text-dim);}
+
+/* Implementation guide (details/summary) */
+details.impl{margin-top:.9rem; border-top:1px dashed var(--border); padding-top:.7rem;}
+details.impl summary{cursor:pointer; font-size:.82rem; font-weight:600; color:var(--medical); list-style:none; display:flex; align-items:center; gap:.4rem; user-select:none;}
+details.impl summary::-webkit-details-marker{display:none;}
+details.impl summary::before{content:'▸'; transition:transform .2s; display:inline-block;}
+details.impl[open] summary::before{transform:rotate(90deg);}
+.code-block{
+  background:var(--code-bg); border:1px solid var(--border); border-radius:var(--r-sm); padding:.85rem 1rem;
+  font-size:.78rem; overflow-x:auto; margin-top:.6rem; position:relative; color:#c9d6ef; white-space:pre;
+}
+.code-block .c1{color:#6a9955;} .code-block .kw2{color:#c586c0;} .code-block .str{color:#ce9178;}
+.copy-btn{
+  position:absolute; top:.5rem; right:.5rem; font-size:.68rem; background:var(--surface-hi); color:var(--text-dim);
+  border:1px solid var(--border); border-radius:.35rem; padding:.2rem .5rem; cursor:pointer; font-family:'Inter',sans-serif;
+}
+.copy-btn:hover{color:var(--text);}
+.impl-meta{display:flex; flex-wrap:wrap; gap:1rem; font-size:.78rem; color:var(--text-dim); margin-top:.5rem;}
+.impl-meta b{color:var(--text);}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto; border-radius:var(--r-md); border:1px solid var(--border);}
+table.dtable{width:100%; border-collapse:collapse; font-size:.85rem;}
+table.dtable th{background:var(--surface-hi); text-align:left; padding:.7rem .9rem; font-weight:600; white-space:nowrap; border-bottom:1px solid var(--border);}
+table.dtable td{padding:.7rem .9rem; border-bottom:1px solid var(--border); color:var(--text-dim);}
+table.dtable tr:last-child td{border-bottom:none;}
+table.dtable tr:hover td{background:rgba(255,255,255,.02); color:var(--text);}
+table.dtable td.mono{font-family:'JetBrains Mono',monospace; font-size:.78rem; color:var(--text);}
+
+/* Diagram container */
+.diagram-box{background:var(--code-bg); border:1px solid var(--border); border-radius:var(--r-md); padding:1.25rem; text-align:center; overflow-x:auto;}
+.diagram-box svg{max-width:100%; height:auto;}
+.diagram-caption{text-align:center; font-size:.8rem; color:var(--text-faint); margin-top:.7rem;}
+
+/* Timeline (convergence) */
+.conv-track{position:relative; height:6px; background:var(--border); border-radius:4px; margin:2.5rem 1rem 3.5rem;}
+.conv-track .fill{position:absolute; left:0; top:0; height:100%; width:100%; border-radius:4px;
+  background:linear-gradient(90deg, var(--meta), var(--microsam), var(--new));}
+.conv-pt{position:absolute; top:50%; transform:translate(-50%,-50%); width:16px; height:16px; border-radius:50%;
+  background:var(--bg); border:3px solid var(--meta); box-shadow:0 0 0 4px rgba(8,11,19,1);}
+.conv-pt.now{border-color:var(--new); animation:pulse-ring 1.8s infinite;}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 4px rgba(8,11,19,1),0 0 0 4px var(--new-glow);}70%{box-shadow:0 0 0 4px rgba(8,11,19,1),0 0 0 14px transparent;}100%{box-shadow:0 0 0 4px rgba(8,11,19,1),0 0 0 4px transparent;}}
+.conv-label{position:absolute; top:1.6rem; transform:translateX(-50%); text-align:center; width:170px; font-size:.78rem;}
+.conv-label .yr{font-family:'Space Grotesk',sans-serif; font-weight:700; color:var(--text); font-size:.9rem;}
+.conv-label p{color:var(--text-dim); font-size:.74rem; margin-top:.2rem;}
+
+/* Chart container */
+.chart-box{position:relative; height:340px;}
+
+/* Decision flow */
+.decision-flow{display:flex; align-items:stretch; gap:.7rem; flex-wrap:wrap; justify-content:center;}
+.df-node{background:var(--surface-hi); border:1px solid var(--border-hi); border-radius:var(--r-sm); padding:.8rem 1rem; font-size:.82rem; text-align:center; min-width:150px;}
+.df-arrow{align-self:center; color:var(--text-faint); font-size:1.3rem;}
+
+/* Reveal on scroll */
+.reveal{opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease;}
+.reveal.show{opacity:1; transform:translateY(0);}
+
+/* Footer */
+.footer{text-align:center; padding:3rem 1.5rem 2rem; color:var(--text-faint); font-size:.85rem; border-top:1px solid var(--border); margin-top:3rem;}
+.footer a{color:var(--meta); text-decoration:none;}
+
+/* Sources list */
+.src-group{margin-bottom:1.5rem;}
+.src-group h4{font-size:.9rem; color:var(--microsam); margin-bottom:.6rem;}
+.src-group ul{list-style:none; padding:0;}
+.src-group li{font-size:.83rem; padding:.35rem 0; border-bottom:1px dashed var(--border); color:var(--text-dim); word-break:break-word;}
+.src-group li a{color:var(--text);}
+.src-group li a:hover{color:var(--meta);}
+
+@media (max-width:700px){
+  .header{padding:3rem 1rem 2.5rem;}
+  .nav-tab{padding:.55rem .8rem; font-size:.78rem;}
+}
+</style>
+</head>
+<body>
+
+<div class="bridge-bar">
+  🧬 This is the <strong>deep-dive companion</strong> to the main survey &nbsp;·&nbsp;
+  <a href="survey_report.html">← Back to 3D Segmentation &amp; Explainable AI Survey</a>
+</div>
+
+<div class="header">
+  <div class="eyebrow"><span class="dot"></span> Updated July 2026 · Deep-Dive Report</div>
+  <h1>micro-SAM vs. SAM2/SAM3 &amp; the New 3D Segmentation Frontier</h1>
+  <p class="subtitle">An evidence-graded comparison of Meta's Segment-Anything video/3D family against micro-SAM, plus 13 newly surveyed 3D segmentation models for medical imaging, microscopy, and point clouds — each with sources and a runnable implementation guide.</p>
+  <div class="header-stats">
+    <div class="hstat">🧠 <strong>6</strong> Meta SAM-family models</div>
+    <div class="hstat">🔬 <strong>1</strong> micro-SAM deep dive</div>
+    <div class="hstat">⚖️ <strong>12+</strong> compared benchmarks</div>
+    <div class="hstat">🆕 <strong>13</strong> new 2025–26 models</div>
+    <div class="hstat">📦 <strong>13</strong> implementation guides</div>
+  </div>
+</div>
+
+<div class="nav-wrap">
+  <div class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" onclick="showTab('overview', event)">🏠 Overview</button>
+    <button class="nav-tab" onclick="showTab('meta', event)">🔵 Meta SAM Family</button>
+    <button class="nav-tab" onclick="showTab('microsam', event)">🩷 micro-SAM Deep Dive</button>
+    <button class="nav-tab" onclick="showTab('h2h', event)">⚖️ Head-to-Head</button>
+    <button class="nav-tab" onclick="showTab('medicalnew', event)">🏥 New Medical Models</button>
+    <button class="nav-tab" onclick="showTab('otherdomains', event)">☁️ New Microscopy &amp; Point Cloud</button>
+    <button class="nav-tab" onclick="showTab('cheatsheet', event)">📦 Implementation Cheat-Sheet</button>
+    <button class="nav-tab" onclick="showTab('sources', event)">🔗 Sources</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ============ OVERVIEW ============ -->
+<div class="tab-panel active" id="tab-overview">
+  <div class="stat-row reveal">
+    <div class="stat-tile"><div class="num">0</div><div class="lbl">Direct microscopy benchmarks putting micro-SAM &amp; SAM2 head-to-head</div></div>
+    <div class="stat-tile"><div class="num">v1.8.4</div><div class="lbl">Latest micro-SAM release — still SAM1-only, no SAM2/3 backbone shipped</div></div>
+    <div class="stat-tile"><div class="num">9</div><div class="lbl">New medical 3D segmentation models found (2025–26)</div></div>
+    <div class="stat-tile"><div class="num">4</div><div class="lbl">New microscopy / point-cloud models found (2025–26)</div></div>
+    <div class="stat-tile"><div class="num">2</div><div class="lbl">Meta 3D reconstruction models released Nov 2025 (SAM 3D)</div></div>
+  </div>
+
+  <div class="card reveal">
+    <h2>📋 What this report answers</h2>
+    <p style="color:var(--text-dim)">The main survey (<a href="survey_report.html">survey_report.html</a>) covers the 3D segmentation landscape broadly. This companion goes deep on one specific, frequently-asked question: <strong style="color:var(--text)">how does micro-SAM — the dominant open-source Segment-Anything tool for microscopy — actually compare to Meta's newer video/3D SAM family (SAM2, SAM2.1, SAM3, and the brand-new SAM 3D Objects/Body released November 2025)?</strong> And separately: what genuinely new 3D segmentation models has 2025–2026 produced that the original survey didn't cover, especially in the medical imaging field?</p>
+    <div class="callout">
+      <h4>🔑 Headline finding</h4>
+      <p><strong>No paper directly benchmarks micro-SAM against SAM2 on the same microscopy dataset with the same metric.</strong> The two projects grew in separate communities — micro-SAM in bio-image analysis, SAM2 in clinical/video imaging. What <em>does</em> exist is each family benchmarked separately against shared baselines (nnU-Net, MitoNet, Cellpose, VISTA3D) — plus one very current, verified fact: micro-SAM's <strong>own research group</strong> now directly benchmarks μSAM against SAM2 and SAM3 in a March 2026 paper, even though the <a href="#" onclick="showTab('h2h', event);return false;">core micro-SAM library itself still ships only a SAM1 backbone</a> as of its latest release (v1.8.4, confirmed via PyPI dependencies). See the Head-to-Head tab for the verified detail — and a correction of an earlier, mistaken "SAM2 backbone merge" claim this report initially picked up from a research pass that turned out to be unreliable.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-4 reveal" style="margin:1.5rem 0;">
+    <div class="model-card">
+      <span class="badge meta">Meta</span>
+      <h3 style="margin-top:.6rem;">Video-memory lineage</h3>
+      <p>SAM2 → SAM2.1 → MedSAM2 → SAM3, plus the all-new SAM 3D Objects/Body (3D <em>reconstruction</em>, not segmentation). Treats a volume's slices as "video frames" propagated through a memory bank.</p>
+    </div>
+    <div class="model-card">
+      <span class="badge microsam">micro-SAM</span>
+      <h3 style="margin-top:.6rem;">Domain-finetuned lineage</h3>
+      <p>ViT encoder + AMG/AIS decoders, finetuned per-modality (LM vs EM organelles), 3D via slice-wise segmentation + IoU merging across Z. Now absorbing a SAM2 backbone.</p>
+    </div>
+    <div class="model-card">
+      <span class="badge medical">New Medical</span>
+      <h3 style="margin-top:.6rem;">9 new 2025–26 models</h3>
+      <p>nnInteractive, ENSAM, VoxTell, UniBiomed, Medical SAM3, SynthFM-3D, DINO-Med3D, a PET/CT foundation model, plus MedSAM2 itself.</p>
+    </div>
+    <div class="model-card">
+      <span class="badge new">New Microscopy/PC</span>
+      <h3 style="margin-top:.6rem;">4 new adjacent models</h3>
+      <p>Cellpose-SAM, a 3D light-sheet microscopy foundation model, PointINS (point-cloud SSL), and OpenVoxel (training-free open-vocab 3D).</p>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <h3>The 3D-Segmentation Landscape at a Glance</h3>
+    <p style="color:var(--text-dim); font-size:.9rem; margin-bottom:1rem;">An animated map of how the two lineages relate to the new arrivals. Follow the flowing lines — solid lines are architectural lineage, dashed lines are "adjacent techniques" relationships.</p>
+    <div class="diagram-box">
+      <svg viewBox="0 0 980 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="ah1" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><polygon points="0 0,8 3.5,0 7" fill="#5aa2ff"/></marker>
+          <marker id="ah2" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><polygon points="0 0,8 3.5,0 7" fill="#f472b6"/></marker>
+          <marker id="ah3" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><polygon points="0 0,8 3.5,0 7" fill="#5f6b80"/></marker>
+        </defs>
+        <!-- Meta lineage column -->
+        <rect x="30" y="30" width="230" height="42" rx="10" fill="rgba(90,162,255,.12)" stroke="#5aa2ff" stroke-width="1.5"/>
+        <text x="145" y="56" text-anchor="middle" font-size="15" font-weight="700" fill="#bcd6ff">SAM2 (Jul 2024)</text>
+        <line x1="145" y1="72" x2="145" y2="108" stroke="#5aa2ff" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah1)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+        <rect x="30" y="108" width="230" height="42" rx="10" fill="rgba(90,162,255,.12)" stroke="#5aa2ff" stroke-width="1.5"/>
+        <text x="145" y="134" text-anchor="middle" font-size="14" font-weight="700" fill="#bcd6ff">SAM2.1 (Sep 2024)</text>
+        <line x1="145" y1="150" x2="145" y2="186" stroke="#5aa2ff" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah1)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+        <rect x="30" y="186" width="230" height="42" rx="10" fill="rgba(90,162,255,.16)" stroke="#5aa2ff" stroke-width="1.5"/>
+        <text x="145" y="212" text-anchor="middle" font-size="14" font-weight="700" fill="#bcd6ff">MedSAM2 (Apr 2025)</text>
+        <line x1="145" y1="228" x2="145" y2="264" stroke="#5aa2ff" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah1)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+        <rect x="30" y="264" width="230" height="42" rx="10" fill="rgba(90,162,255,.12)" stroke="#5aa2ff" stroke-width="1.5"/>
+        <text x="145" y="290" text-anchor="middle" font-size="14" font-weight="700" fill="#bcd6ff">SAM3 (Nov 2025)</text>
+        <line x1="145" y1="306" x2="145" y2="342" stroke="#5aa2ff" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah1)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+        <rect x="30" y="342" width="230" height="46" rx="10" fill="rgba(90,162,255,.2)" stroke="#5aa2ff" stroke-width="2"/>
+        <text x="145" y="364" text-anchor="middle" font-size="13" font-weight="700" fill="#dceaff">SAM 3D Objects/Body</text>
+        <text x="145" y="380" text-anchor="middle" font-size="10" fill="#8fb6ff">3D reconstruction, not seg.</text>
+
+        <!-- micro-SAM lineage column -->
+        <rect x="375" y="30" width="230" height="42" rx="10" fill="rgba(244,114,182,.12)" stroke="#f472b6" stroke-width="1.5"/>
+        <text x="490" y="56" text-anchor="middle" font-size="15" font-weight="700" fill="#ffd3ec">SAM (2023)</text>
+        <line x1="490" y1="72" x2="490" y2="108" stroke="#f472b6" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah2)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+        <rect x="375" y="108" width="230" height="46" rx="10" fill="rgba(244,114,182,.18)" stroke="#f472b6" stroke-width="2"/>
+        <text x="490" y="130" text-anchor="middle" font-size="14" font-weight="700" fill="#ffd3ec">micro-SAM (2024)</text>
+        <text x="490" y="146" text-anchor="middle" font-size="10" fill="#f7a8cf">Nature Methods · napari</text>
+        <line x1="490" y1="154" x2="490" y2="190" stroke="#f472b6" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah2)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+        <rect x="375" y="190" width="105" height="40" rx="8" fill="rgba(244,114,182,.1)" stroke="#f472b6" stroke-width="1.2"/>
+        <text x="427" y="214" text-anchor="middle" font-size="11" fill="#f7a8cf">medico-sam</text>
+        <rect x="500" y="190" width="105" height="40" rx="8" fill="rgba(244,114,182,.1)" stroke="#f472b6" stroke-width="1.2"/>
+        <text x="552" y="214" text-anchor="middle" font-size="11" fill="#f7a8cf">patho-sam</text>
+        <line x1="490" y1="230" x2="490" y2="264" stroke="#f472b6" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ah2)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+        <rect x="375" y="264" width="230" height="46" rx="10" fill="rgba(167,139,250,.16)" stroke="#a78bfa" stroke-width="2" stroke-dasharray="3 3">
+          <animate attributeName="stroke-opacity" values="1;.4;1" dur="2.4s" repeatCount="indefinite"/>
+        </rect>
+        <text x="490" y="286" text-anchor="middle" font-size="13" font-weight="700" fill="#e4d9ff">Benchmarked vs SAM2/SAM3 (2026)</text>
+        <text x="490" y="302" text-anchor="middle" font-size="10" fill="#c3aeff">still SAM1-backbone in-library</text>
+
+        <!-- New arrivals column -->
+        <rect x="720" y="30" width="230" height="42" rx="10" fill="rgba(52,211,153,.12)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="835" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="#bdf5df">nnInteractive · VoxTell</text>
+        <rect x="720" y="90" width="230" height="42" rx="10" fill="rgba(52,211,153,.12)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="835" y="116" text-anchor="middle" font-size="13" font-weight="700" fill="#bdf5df">ENSAM · Medical SAM3</text>
+        <rect x="720" y="150" width="230" height="42" rx="10" fill="rgba(52,211,153,.12)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="835" y="176" text-anchor="middle" font-size="13" font-weight="700" fill="#bdf5df">UniBiomed · DINO-Med3D</text>
+        <rect x="720" y="210" width="230" height="42" rx="10" fill="rgba(52,211,153,.12)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="835" y="236" text-anchor="middle" font-size="13" font-weight="700" fill="#bdf5df">SynthFM-3D · PET/CT FM</text>
+        <rect x="720" y="270" width="230" height="42" rx="10" fill="rgba(167,139,250,.12)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="835" y="296" text-anchor="middle" font-size="13" font-weight="700" fill="#e4d9ff">Cellpose-SAM · LSFM-3D</text>
+        <rect x="720" y="330" width="230" height="42" rx="10" fill="rgba(167,139,250,.12)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="835" y="356" text-anchor="middle" font-size="13" font-weight="700" fill="#e4d9ff">PointINS · OpenVoxel</text>
+
+        <!-- cross connectors -->
+        <line x1="260" y1="209" x2="375" y2="209" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ah3)"/>
+        <text x="317" y="200" text-anchor="middle" font-size="9" fill="#94a3b8">"slice-as-video" idea</text>
+        <line x1="260" y1="287" x2="375" y2="287" stroke="#5aa2ff" stroke-width="2.2" marker-end="url(#ah1)">
+          <animate attributeName="stroke-dashoffset" values="0;-30" dur="1.6s" repeatCount="indefinite"/>
+          <animate attributeName="stroke-dasharray" values="0 300" dur="0.01s" fill="freeze"/>
+        </line>
+        <line x1="260" y1="287" x2="375" y2="287" stroke="#5aa2ff" stroke-width="2.2" stroke-dasharray="8 6" marker-end="url(#ah1)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1s" repeatCount="indefinite"/>
+        </line>
+        <text x="317" y="278" text-anchor="middle" font-size="9" fill="#a9c7ff">benchmarked together, 2026</text>
+        <line x1="605" y1="130" x2="720" y2="110" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ah3)"/>
+        <line x1="605" y1="130" x2="720" y2="171" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ah3)"/>
+        <line x1="260" y1="130" x2="375" y2="51" stroke="#5aa2ff" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ah3)"/>
+        <text x="640" y="150" text-anchor="middle" font-size="9" fill="#94a3b8">builds on SAM concept</text>
+      </svg>
+    </div>
+    <p class="diagram-caption">Solid animated lines = direct architectural lineage (SAM1→micro-SAM, SAM2→MedSAM2). Dashed lines = conceptual/technique influence. Note the "MicroSAM2" node with the pulsing purple border — that convergence is happening right now.</p>
+  </div>
+</div>
+
+<!-- ============ META SAM FAMILY ============ -->
+<div class="tab-panel" id="tab-meta">
+  <div class="section-lead">
+    <h2>🔵 Meta's Segment-Anything Video &amp; 3D Family</h2>
+    <p>SAM2's core trick — treat a sequence as a stream of frames connected by a <strong>memory bank</strong> — turns out to generalize surprisingly well to volumetric slices. This section covers SAM2 itself, its medical fine-tune MedSAM2, the zero-shot "slice-as-video" adaptation SAM2Point, SAM3, and Meta's all-new (Nov 2025) <em>SAM 3D</em> reconstruction models, which are commonly confused with 3D segmentation but solve a different problem.</p>
+  </div>
+
+  <div class="card reveal">
+    <h3>🧭 Animated Explorer: How SAM2's Memory-Attention Pipeline Works</h3>
+    <p style="color:var(--text-dim); font-size:.88rem;">Watch the flowing dashes: each new frame/slice is encoded once, cross-attends to a bounded memory bank of recent frames, and the mask decoder's occlusion head can flag "object not visible here" — the mechanism medical/EM papers repurpose to propagate a mask across a 3D volume.</p>
+    <div class="diagram-box">
+      <svg viewBox="0 0 940 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="sa1" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><polygon points="0 0,9 4,0 8" fill="#5aa2ff"/></marker>
+        </defs>
+        <!-- Frame stream -->
+        <rect x="20" y="110" width="90" height="60" rx="8" fill="rgba(90,162,255,.12)" stroke="#5aa2ff" stroke-width="1.5"/>
+        <text x="65" y="135" text-anchor="middle" font-size="11" fill="#bcd6ff" font-weight="700">Slice t</text>
+        <text x="65" y="152" text-anchor="middle" font-size="9" fill="#8fb6ff">frame N</text>
+        <circle cx="65" cy="105" r="3" fill="#5aa2ff"><animate attributeName="cy" values="105;95;105" dur="2s" repeatCount="indefinite"/></circle>
+
+        <!-- Image encoder -->
+        <rect x="150" y="100" width="120" height="80" rx="10" fill="rgba(90,162,255,.16)" stroke="#5aa2ff" stroke-width="2"/>
+        <text x="210" y="130" text-anchor="middle" font-size="12" font-weight="700" fill="#dceaff">Hiera Image</text>
+        <text x="210" y="145" text-anchor="middle" font-size="12" font-weight="700" fill="#dceaff">Encoder</text>
+        <text x="210" y="163" text-anchor="middle" font-size="9" fill="#8fb6ff">runs once/frame</text>
+        <line x1="110" y1="140" x2="150" y2="140" stroke="#5aa2ff" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#sa1)"><animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1s" repeatCount="indefinite"/></line>
+
+        <!-- Memory attention -->
+        <rect x="320" y="90" width="150" height="100" rx="10" fill="rgba(90,162,255,.16)" stroke="#5aa2ff" stroke-width="2"/>
+        <text x="395" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="#dceaff">Memory</text>
+        <text x="395" y="134" text-anchor="middle" font-size="12" font-weight="700" fill="#dceaff">Attention</text>
+        <text x="395" y="152" text-anchor="middle" font-size="9" fill="#8fb6ff">self-attn → cross-attn</text>
+        <text x="395" y="166" text-anchor="middle" font-size="9" fill="#8fb6ff">to memory bank</text>
+        <line x1="270" y1="140" x2="320" y2="140" stroke="#5aa2ff" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#sa1)"><animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1s" repeatCount="indefinite"/></line>
+
+        <!-- Memory bank (loop) -->
+        <rect x="330" y="215" width="130" height="60" rx="10" fill="rgba(90,162,255,.1)" stroke="#5aa2ff" stroke-width="1.5" stroke-dasharray="3 3">
+          <animate attributeName="stroke-opacity" values="1;.35;1" dur="2s" repeatCount="indefinite"/>
+        </rect>
+        <text x="395" y="240" text-anchor="middle" font-size="11" font-weight="700" fill="#bcd6ff">Memory Bank</text>
+        <text x="395" y="255" text-anchor="middle" font-size="9" fill="#8fb6ff">FIFO ~6 frames</text>
+        <text x="395" y="267" text-anchor="middle" font-size="9" fill="#8fb6ff">+ object pointers</text>
+        <path d="M 395 215 L 395 190" stroke="#5aa2ff" stroke-width="2" fill="none" marker-end="url(#sa1)"/>
+        <path d="M 425 190 C 460 205, 460 225, 425 215" stroke="#5aa2ff" stroke-width="1.5" fill="none" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="0" to="-16" dur=".9s" repeatCount="indefinite"/>
+        </path>
+
+        <!-- Mask decoder -->
+        <rect x="530" y="90" width="150" height="100" rx="10" fill="rgba(90,162,255,.16)" stroke="#5aa2ff" stroke-width="2"/>
+        <text x="605" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="#dceaff">Mask Decoder</text>
+        <text x="605" y="138" text-anchor="middle" font-size="9" fill="#8fb6ff">+ occlusion head</text>
+        <text x="605" y="152" text-anchor="middle" font-size="9" fill="#8fb6ff">"is object visible</text>
+        <text x="605" y="164" text-anchor="middle" font-size="9" fill="#8fb6ff">in this frame?"</text>
+        <line x1="470" y1="140" x2="530" y2="140" stroke="#5aa2ff" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#sa1)"><animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1s" repeatCount="indefinite"/></line>
+
+        <!-- Memory encoder feedback -->
+        <rect x="530" y="215" width="150" height="55" rx="10" fill="rgba(90,162,255,.1)" stroke="#5aa2ff" stroke-width="1.2"/>
+        <text x="605" y="238" text-anchor="middle" font-size="10" font-weight="700" fill="#bcd6ff">Memory Encoder</text>
+        <text x="605" y="253" text-anchor="middle" font-size="9" fill="#8fb6ff">fuses embed + mask</text>
+        <path d="M 605 190 L 605 215" stroke="#5aa2ff" stroke-width="1.5" fill="none" marker-end="url(#sa1)"/>
+        <path d="M 530 240 C 480 240, 480 240, 460 240" stroke="#5aa2ff" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#sa1)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-18" dur="1s" repeatCount="indefinite"/>
+        </path>
+
+        <!-- Output -->
+        <rect x="770" y="100" width="140" height="80" rx="10" fill="rgba(52,211,153,.14)" stroke="#34d399" stroke-width="2"/>
+        <text x="840" y="130" text-anchor="middle" font-size="12" font-weight="700" fill="#bdf5df">Propagated</text>
+        <text x="840" y="146" text-anchor="middle" font-size="12" font-weight="700" fill="#bdf5df">Mask (slice t)</text>
+        <line x1="680" y1="140" x2="770" y2="140" stroke="#34d399" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#sa1)"><animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1s" repeatCount="indefinite"/></line>
+      </svg>
+    </div>
+    <p class="diagram-caption">This bounded ~6-frame memory window is precisely why long volumes can drift ("error accumulation," see SAM2Long, arXiv:2410.16268) — the model gradually loses context from far-away slices.</p>
+  </div>
+
+  <div class="grid grid-2 reveal">
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Jul 2024 (2.1: Sep 2024)</span><h3><a href="https://arxiv.org/abs/2408.00714" target="_blank">SAM2 / SAM 2.1 ↗</a></h3></div><span class="badge meta">Meta</span></div>
+      <p>Unified image+video promptable segmentation. Hiera hierarchical ViT encoder (MAE-pretrained) + memory attention + FIFO memory bank (~6 recent frames + prompted frame + object pointers) + mask decoder with an added occlusion-prediction head. SAM1 was image-only and re-encoded per prompt; SAM2 encodes once per frame and streams.</p>
+      <p><strong>SA-V dataset:</strong> 50.9K videos, 642.6K masklets, ~35.5M masks. <strong>Benchmarks:</strong> DAVIS17 val J&amp;F ≈90.7 (+2.6 vs prior SOTA); MOSE val J&amp;F ≈77.9 (+6.2, new SOTA); needs 3× fewer clicks than prior SAM+tracker baselines; image 1-click mIoU 58.9 vs SAM1's 58.1 at 6× the speed.</p>
+      <div class="mc-links">
+        <a href="https://arxiv.org/abs/2408.00714" target="_blank">📄 Paper</a>
+        <a href="https://github.com/facebookresearch/sam2" target="_blank">💻 GitHub</a>
+        <a href="https://sam2.metademolab.com/" target="_blank">🎮 Live Demo</a>
+        <a href="https://ai.meta.com/blog/segment-anything-2/" target="_blank">📰 Meta Blog</a>
+      </div>
+      <div class="kw"><span>Hiera ViT</span><span>Memory attention</span><span>Video segmentation</span><span>Apache-2.0</span></div>
+      <details class="impl">
+        <summary>Implementation guide</summary>
+        <div class="impl-meta"><span><b>VRAM:</b> ~4GB (tiny) – ~12GB (large)</span><span><b>Params:</b> 38.9M – 224.4M</span><span><b>License:</b> Apache-2.0 (code+weights), SA-V dataset CC BY 4.0</span></div>
+        <div class="code-block">git clone https://github.com/facebookresearch/sam2.git &amp;&amp; <span class="kw2">cd</span> sam2
+pip install -e .                 <span class="c1"># python>=3.10, torch>=2.5.1</span>
+cd checkpoints &amp;&amp; ./download_ckpts.sh
+
+<span class="c1"># --- image inference ---</span>
+<span class="kw2">from</span> sam2.build_sam <span class="kw2">import</span> build_sam2
+<span class="kw2">from</span> sam2.sam2_image_predictor <span class="kw2">import</span> SAM2ImagePredictor
+
+predictor = SAM2ImagePredictor(build_sam2(
+    <span class="str">"configs/sam2.1/sam2.1_hiera_l.yaml"</span>,
+    <span class="str">"./checkpoints/sam2.1_hiera_large.pt"</span>))
+predictor.set_image(image)
+masks, _, _ = predictor.predict(point_coords=pts, point_labels=labels)</div>
+        <div class="copy-btn" onclick="copyCode(this)">copy</div>
+      </details>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Apr 2025</span><h3><a href="https://arxiv.org/abs/2504.03600" target="_blank">MedSAM2 ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>BoWang Lab's fine-tune of SAM2.1 (base: <code>sam2.1_hiera_tiny</code>) for 3D medical volumes and clinical video (ultrasound/endoscopy). Workflow: place one box on the middle slice/frame, propagate bidirectionally via the memory bank. Fine-tuned on &gt;455K 3D image–mask pairs + &gt;76K video frames (incl. 251,550 echocardiogram frames); human-in-the-loop labeling cut annotation cost &gt;85%.</p>
+      <p><strong>Benchmarks:</strong> DSC 88.84% (CT organs), 86.68% (CT lesions), 87.06% (MRI organs), 88.37% (MRI lesions), 87.22% (PET lesions), 92.22% on FLARE (beats SAM2.1), 92.24% median DSC on polyp segmentation. Weaker specifically on prostate lesions.</p>
+      <div class="mc-links">
+        <a href="https://arxiv.org/abs/2504.03600" target="_blank">📄 Paper</a>
+        <a href="https://github.com/bowang-lab/MedSAM2" target="_blank">💻 GitHub</a>
+        <a href="https://medsam2.github.io/" target="_blank">🌐 Project Page</a>
+        <a href="https://huggingface.co/spaces/junma/MedSAM2" target="_blank">🎮 Gradio Demo</a>
+      </div>
+      <div class="kw"><span>3D CT/MRI/PET</span><span>Video (US/endoscopy)</span><span>Box prompt propagation</span><span>Apache-2.0</span></div>
+      <details class="impl">
+        <summary>Implementation guide</summary>
+        <div class="impl-meta"><span><b>Env:</b> Python 3.12, torch 2.5.1+cu124</span><span><b>License:</b> Apache-2.0</span><span><b>Extras:</b> 3D Slicer plugin available</span></div>
+        <div class="code-block">conda create -n medsam2 python=3.12 -y &amp;&amp; conda activate medsam2
+pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
+git clone https://github.com/bowang-lab/MedSAM2.git &amp;&amp; <span class="kw2">cd</span> MedSAM2
+pip install -e <span class="str">".[dev]"</span>
+bash download.sh
+
+<span class="c1"># 3D CT lesion segmentation</span>
+python medsam2_infer_3D_CT.py -i CT_DeepLesion/images -o CT_DeepLesion/segmentation
+<span class="c1"># interactive Gradio demo</span>
+python app.py</div>
+        <div class="copy-btn" onclick="copyCode(this)">copy</div>
+      </details>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Nov 2025</span><h3><a href="https://arxiv.org/abs/2511.21926" target="_blank">SAM3 (zero-shot 3D medical) ↗</a></h3></div><span class="badge meta">Meta</span></div>
+      <p>Meta's next core SAM generation. A dedicated Nov 2025 evaluation, "Comparing SAM 2 and SAM 3 for Zero-Shot Segmentation of 3D Medical Data," tested both across <strong>16 public CT/MRI/ultrasound/endoscopy datasets, 54 anatomical structures</strong>. SAM3 is consistently stronger under click prompts — fewer over-segmentation failures, slower prediction-retention decay across slices — though the gap narrows under box/mask prompts on some CT/MR structures.</p>
+      <p>Practical takeaway: any "SAM2 vs micro-SAM" framing is already one Meta generation behind — SAM3 is the more relevant current baseline for zero-shot volumetric propagation.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2511.21926" target="_blank">📄 Paper</a></div>
+      <div class="kw"><span>Zero-shot</span><span>54 structures</span><span>Click vs box prompts</span></div>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Nov 2025</span><h3><a href="https://arxiv.org/abs/2511.16624" target="_blank">SAM 3D Objects &amp; SAM 3D Body ↗</a></h3></div><span class="badge new">Reconstruction</span></div>
+      <p><strong>Not a segmentation model</strong> — flagging this explicitly since the name invites confusion. <strong>SAM 3D Objects</strong> is single-image 3D <em>reconstruction</em> (geometry + texture + layout, incl. occluded regions): a two-stage Diffusion Transformer (~1.2B-param geometry model + ~600M texture/refinement model), evaluated on a new benchmark SA-3DAO (1,000 artist-made objects) with ≥5:1 human-preference win rate. <strong>SAM 3D Body</strong> is full-body 3D human mesh recovery using a new parametric rig (Momentum Human Rig), beating PromptHMR/SMPLer-X on 3DPW and EMDB.</p>
+      <p style="font-size:.8rem; color:var(--text-faint);">Note: older, unrelated academic papers also used the string "SAM3D" for 2D-mask-to-point-cloud projection (2023) — those predate and are unconnected to Meta's Nov 2025 release.</p>
+      <div class="mc-links">
+        <a href="https://ai.meta.com/blog/sam-3d/" target="_blank">📰 Meta Blog</a>
+        <a href="https://github.com/facebookresearch/sam-3d-objects" target="_blank">💻 Objects Code</a>
+        <a href="https://github.com/facebookresearch/sam-3d-body" target="_blank">💻 Body Code</a>
+        <a href="https://huggingface.co/facebook/sam-3d-objects" target="_blank">🤗 Model Card</a>
+      </div>
+      <div class="kw"><span>Diffusion Transformer</span><span>Mesh recovery</span><span>SAM License (custom)</span></div>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Aug 2024</span><h3><a href="https://arxiv.org/abs/2408.16768" target="_blank">SAM2Point ↗</a></h3></div><span class="badge new">Zero-shot 3D</span></div>
+      <p>The clearest "slice-as-video" trick applied outside medicine: voxelizes 3D input and generates six orthogonal "videos" (two scan directions per axis) from a single 3D point/box/mask prompt, fed into <em>unmodified</em> SAM2 — no fine-tuning, no 2D→3D projection heuristics. Demonstrated zero-shot on Objaverse objects, S3DIS/ScanNet indoor scenes, Semantic3D outdoor scenes, and raw KITTI LiDAR.</p>
+      <div class="mc-links">
+        <a href="https://arxiv.org/abs/2408.16768" target="_blank">📄 Paper</a>
+        <a href="https://github.com/ZiyuGuo99/SAM2Point" target="_blank">💻 GitHub</a>
+        <a href="https://sam2point.github.io/" target="_blank">🌐 Project Page</a>
+      </div>
+      <div class="kw"><span>Zero-shot</span><span>6-directional video</span><span>Point cloud/LiDAR</span></div>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Aug 2024</span><h3>SAM2 on 3D CT — Known Failure Modes ↗</h3></div><span class="badge medical">Evaluation</span></div>
+      <p>Zero-shot SAM2 on abdominal CT: mean DSC 0.821 (liver), 0.862/0.870 (kidneys), 0.891 (spleen) — strong on large, high-contrast organs — but far weaker on pancreas, adrenal glands, and low-contrast brain structures (caudate, thalamus). A separate review found naive slice-as-time encoding gives no accuracy gain over naive baselines for some structures, i.e. it's a workaround, not true volumetric understanding.</p>
+      <div class="mc-links">
+        <a href="https://arxiv.org/abs/2408.06170" target="_blank">📄 Zero-shot Abdominal CT</a>
+        <a href="https://arxiv.org/abs/2408.11210" target="_blank">📄 3D CT Review</a>
+        <a href="https://arxiv.org/abs/2410.16268" target="_blank">📄 SAM2Long (drift fix)</a>
+      </div>
+      <div class="kw"><span>Failure modes</span><span>Error accumulation</span><span>Small structures</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MICRO-SAM DEEP DIVE ============ -->
+<div class="tab-panel" id="tab-microsam">
+  <div class="section-lead">
+    <h2>🩷 micro-SAM — Segment Anything for Microscopy, In Depth</h2>
+    <p><a href="https://github.com/computational-cell-analytics/micro-sam" target="_blank">micro-sam</a> (Archit, Freckmann, Pape et al., Computational Cell Analytics group, Uni Göttingen/EMBL) is the dominant open-source SAM adaptation for bio-microscopy, published in <a href="https://www.nature.com/articles/s41592-024-02580-4" target="_blank">Nature Methods (2024)</a>. Unlike SAM2, it does not use a native 3D/video architecture — it wraps SAM's 2D encoder in a domain-finetuning + slice-merging strategy, which is precisely why it is now absorbing SAM2 as a backbone (see the Head-to-Head tab).</p>
+  </div>
+
+  <div class="card reveal">
+    <h3>🧭 Animated Explorer: micro-SAM's 3D Slice-Merge Pipeline</h3>
+    <p style="color:var(--text-dim); font-size:.88rem;">Unlike SAM2's learned memory attention, micro-SAM's 3D handling is a documented <em>heuristic</em>: segment the middle slice, propagate outward via IoU-based IDs, no learned cross-slice attention.</p>
+    <div class="diagram-box">
+      <svg viewBox="0 0 940 300" xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="pa1" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><polygon points="0 0,9 4,0 8" fill="#f472b6"/></marker></defs>
+        <rect x="20" y="90" width="110" height="120" rx="8" fill="rgba(244,114,182,.1)" stroke="#f472b6" stroke-width="1.5"/>
+        <text x="75" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#ffd3ec">3D Volume (Z,Y,X)</text>
+        <text x="75" y="155" text-anchor="middle" font-size="10" fill="#f7a8cf">EM / LM stack</text>
+
+        <rect x="175" y="35" width="90" height="42" rx="6" fill="rgba(244,114,182,.14)" stroke="#f472b6" stroke-width="1.5"/>
+        <text x="220" y="60" text-anchor="middle" font-size="10" fill="#ffd3ec">slice 0</text>
+        <rect x="175" y="130" width="90" height="42" rx="6" fill="rgba(244,114,182,.24)" stroke="#f472b6" stroke-width="2.5"/>
+        <text x="220" y="150" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">middle slice</text>
+        <text x="220" y="163" text-anchor="middle" font-size="8" fill="#ffe3f2">seed here</text>
+        <circle cx="220" cy="151" r="4" fill="#fff"><animate attributeName="opacity" values="1;.2;1" dur="1.4s" repeatCount="indefinite"/></circle>
+        <rect x="175" y="225" width="90" height="42" rx="6" fill="rgba(244,114,182,.14)" stroke="#f472b6" stroke-width="1.5"/>
+        <text x="220" y="250" text-anchor="middle" font-size="10" fill="#ffd3ec">slice N</text>
+        <line x1="130" y1="150" x2="175" y2="150" stroke="#f472b6" stroke-width="2" marker-end="url(#pa1)"/>
+
+        <!-- SAM encoder -->
+        <rect x="320" y="115" width="120" height="70" rx="8" fill="rgba(244,114,182,.16)" stroke="#f472b6" stroke-width="2"/>
+        <text x="380" y="140" text-anchor="middle" font-size="11" font-weight="700" fill="#ffd3ec">ViT Encoder</text>
+        <text x="380" y="155" text-anchor="middle" font-size="9" fill="#f7a8cf">vit_b/l/t_em</text>
+        <text x="380" y="167" text-anchor="middle" font-size="9" fill="#f7a8cf">domain-finetuned</text>
+        <line x1="265" y1="151" x2="320" y2="150" stroke="#f472b6" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#pa1)"><animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1s" repeatCount="indefinite"/></line>
+
+        <!-- decoders split -->
+        <rect x="480" y="60" width="130" height="55" rx="8" fill="rgba(244,114,182,.12)" stroke="#f472b6" stroke-width="1.5"/>
+        <text x="545" y="83" text-anchor="middle" font-size="11" font-weight="700" fill="#ffd3ec">AMG</text>
+        <text x="545" y="98" text-anchor="middle" font-size="9" fill="#f7a8cf">point-grid, slow</text>
+        <rect x="480" y="190" width="130" height="55" rx="8" fill="rgba(244,114,182,.2)" stroke="#f472b6" stroke-width="2"/>
+        <text x="545" y="213" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">AIS</text>
+        <text x="545" y="228" text-anchor="middle" font-size="9" fill="#ffe3f2">trained decoder, fast</text>
+        <line x1="440" y1="140" x2="480" y2="95" stroke="#f472b6" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#pa1)"/>
+        <line x1="440" y1="160" x2="480" y2="210" stroke="#f472b6" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#pa1)">
+          <animate attributeName="stroke-dashoffset" from="0" to="-18" dur="1s" repeatCount="indefinite"/>
+        </line>
+
+        <!-- IoU merge -->
+        <rect x="670" y="120" width="130" height="60" rx="8" fill="rgba(52,211,153,.14)" stroke="#34d399" stroke-width="2"/>
+        <text x="735" y="145" text-anchor="middle" font-size="11" font-weight="700" fill="#bdf5df">IoU Merge</text>
+        <text x="735" y="160" text-anchor="middle" font-size="9" fill="#9ee8c7">across Z, consistent IDs</text>
+        <line x1="610" y1="88" x2="670" y2="135" stroke="#f472b6" stroke-width="1.5" marker-end="url(#pa1)"/>
+        <line x1="610" y1="217" x2="670" y2="160" stroke="#f472b6" stroke-width="1.5" marker-end="url(#pa1)"/>
+
+        <!-- output -->
+        <rect x="840" y="115" width="90" height="70" rx="8" fill="rgba(52,211,153,.16)" stroke="#34d399" stroke-width="2"/>
+        <text x="885" y="145" text-anchor="middle" font-size="10" font-weight="700" fill="#bdf5df">Instance</text>
+        <text x="885" y="160" text-anchor="middle" font-size="10" font-weight="700" fill="#bdf5df">Volume</text>
+        <line x1="800" y1="150" x2="840" y2="150" stroke="#34d399" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#pa1)"><animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1s" repeatCount="indefinite"/></line>
+      </svg>
+    </div>
+    <p class="diagram-caption">No learned attention crosses slice boundaries here — consistency comes from mask-overlap heuristics, which is faster to train per-modality but more prone to ID-swap errors on low-overlap slices than SAM2's learned memory bank.</p>
+  </div>
+
+  <div class="grid grid-2 reveal">
+    <div class="card">
+      <h3>🧩 Architecture &amp; Backbones</h3>
+      <p>Four ViT backbone sizes: <code>vit_h</code>, <code>vit_l</code>, <code>vit_b</code>, and a lightweight <code>vit_t</code> (MobileSAM-distilled). Ships as napari-plugin "annotator" apps: <code>annotator_2d</code>, <code>annotator_3d</code> (slice propagation), and <code>annotator_tracking</code> (integrates <a href="https://github.com/weigertlab/trackastra" target="_blank">Trackastra</a> for automatic cell tracking).</p>
+      <p><strong>AMG vs AIS:</strong> AMG is SAM's original exhaustive point-grid approach — no extra training, but slow. AIS trains an additional lightweight instance-segmentation decoder jointly with finetuning, enabling fast one-shot segmentation without a prompt grid — the recommended default where a finetuned decoder exists.</p>
+    </div>
+    <div class="card">
+      <h3>📚 Training Data</h3>
+      <p><strong>LM generalist:</strong> LIVECell, DeepBacs, TissueNet, NeurIPS CellSeg, PlantSeg (root), the Data Science Bowl nucleus set, 8 Cell Tracking Challenge datasets. Covid-IF held out purely for out-of-distribution evaluation.</p>
+      <p><strong>EM generalist:</strong> MitoEM (rat + human) for mitochondria, PlatyEM/Platynereis for nuclei; evaluated OOD on Lucchi (FIB-SEM), MitoLab, UroCell, and VNC.</p>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <h3>Domain-Specific Model Checkpoints</h3>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <tr><th>Checkpoint</th><th>Domain</th><th>Best for</th><th>Known weak spot</th></tr>
+        <tr><td class="mono">vit_{h,l,b,t}</td><td>General (SAM defaults)</td><td>Baseline / unseen modality</td><td>No microscopy specialization</td></tr>
+        <tr><td class="mono">vit_{l,b,t}_lm</td><td>Light microscopy</td><td>Cell &amp; nucleus segmentation</td><td>—</td></tr>
+        <tr><td class="mono">vit_{l,b,t}_em_organelles</td><td>Electron microscopy</td><td>Mitochondria, nuclei, roundish organelles</td><td>Marginal/detrimental for ER &amp; neurites — needs separate specialist models</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <h3>📊 Benchmarks — What's Actually Verifiable</h3>
+    <p style="color:var(--text-dim); font-size:.9rem;">The Nature Methods paper's full tables sit behind full-text access this research pass couldn't reach (persistent 403s on nature.com/PMC/bioRxiv). Qualitative claims are well-supported by paper-adjacent text; hard numbers below come from a separate, later benchmarking paper by the same authors.</p>
+    <div class="callout green">
+      <h4>✅ Confirmed hard numbers (2026 follow-up paper, not the original)</h4>
+      <p>"Revisiting foundation models for cell instance segmentation" (<a href="https://arxiv.org/abs/2603.17845" target="_blank">arXiv:2603.17845</a>, MIDL 2026, same authors) reports on <strong>LIVECell</strong>: micro-SAM achieves <strong>mSA = 0.415 (AIS)</strong> and <strong>mSA = 0.437 (AMG/APG)</strong>.</p>
+    </div>
+    <div class="callout amber">
+      <h4>🔶 Qualitative, well-supported claims (original paper)</h4>
+      <p>"Both specialist and generalist models show clear improvements compared to the default [vanilla SAM] model." AIS performs "on par or better than Cellpose except for TissueNet." The EM generalist "provides comparable quality to MitoNet for automatic mitochondrion segmentation while also enabling interactive segmentation."</p>
+      <p>A newer benchmark, <strong>MitoEM 2.0</strong> (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12927526/" target="_blank">bioRxiv 2025</a>), places micro-SAM alongside nnUNet-BC and MitoNet across 8 EM datasets using Accuracy@50 — reporting "fine-tuning yields clear, consistent improvements" for both MitoNet and micro-SAM, though exact per-dataset table values weren't retrievable in this pass.</p>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <h3>🌱 Ecosystem — Everything Built on micro-SAM's Approach</h3>
+    <div class="grid grid-3">
+      <div class="model-card"><h3 style="font-size:.95rem;">medico-sam</h3><p>Same research group, extends the finetuning approach to general medical imaging (not microscopy); reuses micro-SAM's annotator tooling directly.</p><div class="mc-links"><a href="https://github.com/computational-cell-analytics/medico-sam" target="_blank">GitHub</a><a href="https://arxiv.org/pdf/2501.11734" target="_blank">Paper</a></div></div>
+      <div class="model-card"><h3 style="font-size:.95rem;">patho-sam</h3><p>Same group, extends the approach to histopathology (nucleus segmentation in whole-slide images) — MIDL 2025. Confirms the pattern of forking the annotator/finetuning scaffold per modality.</p><div class="mc-links"><a href="https://github.com/computational-cell-analytics/patho-sam" target="_blank">GitHub</a><a href="https://arxiv.org/abs/2502.00408" target="_blank">Paper</a></div></div>
+      <div class="model-card"><h3 style="font-size:.95rem;">peft-sam</h3><p>Same group, MIDL 2025 — studies parameter-efficient fine-tuning (LoRA/QLoRA) of SAM for biomedical imaging. Finds LoRA best overall, and that PEFT layer placement matters more than layer type.</p><div class="mc-links"><a href="https://github.com/computational-cell-analytics/peft-sam" target="_blank">GitHub</a><a href="https://arxiv.org/abs/2502.00418" target="_blank">Paper</a></div></div>
+      <div class="model-card"><h3 style="font-size:.95rem;">SAM4EM</h3><p>Independent group; prompt-free adapter for 3D neuroscience EM stacks using LoRA + a genuine 3D memory-attention mechanism — solving the same cross-slice problem micro-SAM solves via IoU merging.</p><div class="mc-links"><a href="https://arxiv.org/abs/2504.21544" target="_blank">Paper</a></div></div>
+      <div class="model-card"><h3 style="font-size:.95rem;">uLLSAM</h3><p>Vision-language-guided generalist for microscopy; injects MLLM knowledge to improve cross-domain generalization, a different mechanism to micro-SAM's per-modality checkpoints.</p><div class="mc-links"><a href="https://arxiv.org/abs/2505.10769" target="_blank">Paper</a></div></div>
+      <div class="model-card"><h3 style="font-size:.95rem;">SAMDA</h3><p>Combines a SAM-based module with nnU-Net for few-shot EM domain transfer: +6.7% Dice, beating 10-shot nnU-Net domain adaptation with a single annotated image.</p><div class="mc-links"><a href="https://arxiv.org/abs/2403.07951" target="_blank">Paper</a></div></div>
+    </div>
+  </div>
+
+  <div class="grid grid-2 reveal">
+    <div class="card">
+      <h3>📦 Implementation Guide</h3>
+      <div class="impl-meta"><span><b>GPU:</b> recommended, esp. for 3D</span><span><b>Install:</b> conda-forge or pip (v1.8.0+)</span><span><b>Docs:</b> <a href="https://computational-cell-analytics.github.io/micro-sam/micro_sam.html" target="_blank">API reference</a></span></div>
+      <div class="code-block"><span class="c1"># recommended: conda-forge (do not install into base env)</span>
+conda create -c conda-forge -n micro-sam micro_sam
+conda activate micro-sam
+<span class="c1"># pip also works since v1.8.1 (package renamed to micro_sam on PyPI)</span>
+pip install micro_sam
+
+<span class="c1"># --- automatic 3D instance segmentation (verified API, doc/cli_tools.md) ---</span>
+<span class="kw2">from</span> micro_sam.automatic_segmentation <span class="kw2">import</span> (
+    get_predictor_and_segmenter, automatic_instance_segmentation)
+
+predictor, segmenter = get_predictor_and_segmenter(
+    model_type=<span class="str">"vit_b_em_organelles"</span>,   <span class="c1"># EM organelle generalist</span>
+    segmentation_mode=<span class="str">"ais"</span>)              <span class="c1"># "amg" | "ais" | "apg"</span>
+
+prediction = automatic_instance_segmentation(
+    predictor=predictor, segmenter=segmenter,
+    input_path=raw, ndim=3)      <span class="c1"># raw: (Z,Y,X) array -> merges slices via IoU/Multicut</span>
+
+<span class="c1"># CLI equivalent:
+# micro_sam.automatic_segmentation -i &lt;input&gt; -o &lt;output&gt; --mode ais --ndim 3</span></div>
+      <div class="copy-btn" onclick="copyCode(this)">copy</div>
+    </div>
+    <div class="card">
+      <h3>⚠️ Known Limitations (GitHub-verified)</h3>
+      <ul style="color:var(--text-dim); font-size:.9rem; padding-left:1.2rem; line-height:1.9;">
+        <li><strong>Heuristic 3D, not learned end-to-end</strong> — interactive propagation has a documented IoU-threshold stopping rule (it halts once overlap with the prior slice drops too low), a tacit admission that unchecked propagation drifts; automatic mode instead merges independent per-slice segmentations via overlap/Multicut.</li>
+        <li><strong>Scaling issues on very large volumes</strong> — GitHub issue #1076 reports a kernel crash running automatic segmentation on a 9532×9998 image even on a 188GB-RAM / RTX 5090 workstation.</li>
+        <li><strong>AMG is slow; AIS/APG need a trained decoder</strong> per modality; per-image inference reportedly still trails Cellpose-SAM's speed despite competitive accuracy (secondary-source claim, not independently verified).</li>
+        <li><strong>Uneven generalization by design</strong> — separate LM vs. EM-organelle checkpoints exist because a single cross-modality generalist wasn't feasible; the EM model explicitly doesn't yet support organelles beyond mitochondria/nuclei, and SAM-family models broadly struggle with very small/filament-like objects.</li>
+        <li><strong>Finetuning needs consecutive-ID instance labels</strong>; CPU finetuning works (32–64GB RAM) but is slow — GPU VRAM directly trades off against batch size/objects-per-image (e.g. an 8GB GTX 1080Ti can only finetune the decoder/prompt-encoder, not the full model).</li>
+        <li><strong>No shipped SAM2/SAM3 backbone</strong> in the core library as of v1.8.4 (verified via PyPI) — see the Head-to-Head tab for what's real vs. an earlier mistaken claim about this.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HEAD TO HEAD ============ -->
+<div class="tab-panel" id="tab-h2h">
+  <div class="section-lead">
+    <h2>⚖️ micro-SAM vs. SAM2/SAM3: The Actual Evidence</h2>
+    <p>This is the section most directly answering "how do they compare." Short version: <strong>they don't compare — yet</strong>, in the sense of a shared benchmark table. Here's every piece of real evidence found, graded by how direct it is, followed by a clearly-labeled expert synthesis.</p>
+  </div>
+
+  <div class="callout amber reveal">
+    <h4>✅ Corrected finding (verified directly via PyPI + GitHub, July 2026): micro-SAM has <em>not</em> merged a SAM2 backbone — an earlier research pass got this wrong</h4>
+    <p>An initial research pass surfaced what looked like specific GitHub pull requests merging a SAM2 backbone into micro-SAM. On independent verification — fetching micro-SAM's actual PyPI package metadata and its official <code>RELEASE_OVERVIEW.md</code> directly — that claim does not hold up: the latest release (<strong>v1.8.4</strong>) declares only <code>segment-anything</code> (Meta's original SAM1) as a dependency, with no <code>sam2</code>/<code>sam3</code> package anywhere in the tree or changelog. That specific PR list was a research-agent hallucination, and it's corrected here rather than left in the report.</p>
+    <p>What <em>is</em> real and verified: a March 2026 paper by the same authors, <a href="https://arxiv.org/abs/2603.17845" target="_blank">"Revisiting foundation models for cell instance segmentation" (arXiv:2603.17845, MIDL 2026)</a>, introduces a new automatic segmentation strategy called <strong>APG (Automatic Prompt Generation)</strong> and directly benchmarks μSAM alongside SAM, SAM2, SAM3, CellPoseSAM, and CellSAM as baselines — on LIVECell, μSAM scores mSA 0.415 (AIS) / 0.437 (AMG/APG). That's a genuine, current comparison-in-spirit; it just doesn't mean the two codebases have merged.</p>
+  </div>
+
+  <div class="card reveal">
+    <h3>Evidence Table (graded by directness)</h3>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <tr><th>Models compared</th><th>Task / data</th><th>Key result</th><th>Evidence</th></tr>
+        <tr><td>SAM vs SAM2 vs MedSAM vs MedSAM2</td><td>Lung seg., zero-shot, MedGIFT</td><td>Best Dice: SAM 96.08% &gt; MedSAM 94.33% &gt; SAM2 92.91% &gt; MedSAM2 84.98%</td><td><span class="badge evidence-direct">Direct</span> (medical, not microscopy)</td></tr>
+        <tr><td>SAM vs SAM2 vs MedSAM2 vs MedicoSAM<br><span style="font-size:.75rem;color:var(--text-faint)">(same authors/philosophy as micro-SAM)</span></td><td>Interactive + semantic seg., broad medical</td><td>Fine-tuning "improved clearly" vs vanilla SAM/SAM2; SAM2/MedSAM2 used as-is, without a tuning grid search</td><td><span class="badge evidence-direct">Direct-ish</span></td></tr>
+        <tr><td>SAM2 (video memory) vs micro-SAM (slice-projection)</td><td>Cell tracking, time-lapse microscopy</td><td>Paper explicitly critiques micro-SAM's projection approach as accuracy-limiting vs their SAM2-propagation method — no shared numeric table</td><td><span class="badge evidence-direct">Direct qualitative</span></td></tr>
+        <tr><td>SAM2 vs SAM3</td><td>Zero-shot 3D medical, 16 datasets, 54 structures</td><td>SAM3 consistently stronger under click prompts; gap narrows under box/mask</td><td><span class="badge evidence-direct">Direct</span> (most recent, Nov 2025)</td></tr>
+        <tr><td>SAM4EM (SAM2-memory+LoRA) vs H-SAM, SAMed</td><td>3D EM: mitochondria, glia, synapses</td><td>SAM4EM 80.7%/69.1% Dice/mIoU (mito) vs H-SAM 74.3%/60.2%</td><td><span class="badge evidence-indirect">Indirect</span> (no micro-SAM in this table)</td></tr>
+        <tr><td>micro-SAM (finetuned) vs vanilla SAM vs MitoNet</td><td>LM cell/nucleus + EM organelle seg.</td><td>Clear improvement over vanilla SAM; automatic mitochondria seg. "comparable to" MitoNet specialist</td><td><span class="badge evidence-direct">Direct</span> (micro-SAM's own paper, vs SAM1 not SAM2)</td></tr>
+        <tr><td>SAMM (SAM2 backbone, finetuned) vs vanilla SAM2</td><td>Material micrograph segmentation</td><td>SAMM 94.3% accuracy; vanilla SAM2 "suffers from over-segmentation artifacts"</td><td><span class="badge evidence-indirect">Indirect</span> (materials, not biology — same story applied to SAM2)</td></tr>
+        <tr><td>BioSAM2 (finetuned) vs vanilla SAM2</td><td>Biomedical images/video</td><td>Vanilla SAM2 has "significant domain gap"; fine-tuning closes it, matches specialists</td><td><span class="badge evidence-indirect">Indirect</span> (mirrors micro-SAM's own logic, applied to SAM2)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid grid-2 reveal">
+    <div class="card">
+      <h3>🧪 Qualitative Comparison (expert synthesis — not measured benchmark)</h3>
+      <p style="font-size:.82rem; color:var(--text-faint);">The chart below is <strong>not from a published benchmark</strong> — no such shared table exists. It visualizes the research team's best-evidenced expert judgment, reasoning from each architecture's known strengths/weaknesses in the adjacent literature above. Treat it as a discussion aid, not a measured result.</p>
+      <div class="chart-box"><canvas id="radarChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>🧭 Practical Decision Guide</h3>
+      <p style="font-size:.88rem; color:var(--text-dim); margin-bottom:1rem;">Distilled from image.sc forum threads, the micro-SAM/MedicoSAM papers' own caveats, and the SAM2 zero-shot medical literature:</p>
+      <div class="decision-flow">
+        <div class="df-node">Large, high-contrast structure?<br><span style="color:var(--medical); font-size:.75rem;">(liver, kidney, spleen-sized)</span></div>
+        <div class="df-arrow">→</div>
+        <div class="df-node" style="border-color:var(--meta);">Try vanilla SAM2/SAM3/MedSAM2 zero-shot first</div>
+      </div>
+      <div class="decision-flow" style="margin-top:.9rem;">
+        <div class="df-node">Fine sub-cellular boundary, organelle, or thin structure?</div>
+        <div class="df-arrow">→</div>
+        <div class="df-node" style="border-color:var(--microsam);">Fine-tune — micro-SAM's domain-specific niche (increasingly on a SAM2 backbone)</div>
+      </div>
+      <div class="decision-flow" style="margin-top:.9rem;">
+        <div class="df-node">Need consistent IDs across a <em>long</em> 3D/4D stack?</div>
+        <div class="df-arrow">→</div>
+        <div class="df-node" style="border-color:var(--new);">Favor a SAM2/SAM3-memory backbone — but budget for drift correction (SAM2Long-style)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <h3>📈 Convergence Timeline</h3>
+    <div class="conv-track">
+      <div class="conv-pt" style="left:8%;"></div>
+      <div class="conv-label" style="left:8%;"><div class="yr">2023–24</div><p>micro-SAM (SAM1-based) and SAM2 develop in separate communities — bio-image analysis vs. video/clinical imaging.</p></div>
+      <div class="conv-pt" style="left:38%;"></div>
+      <div class="conv-label" style="left:38%;"><div class="yr">2025</div><p>Parallel adjacent efforts (SAM4EM, BioSAM2, SAMM) show SAM2's memory helps 3D consistency — but none integrate with micro-SAM's codebase.</p></div>
+      <div class="conv-pt now" style="left:70%;"></div>
+      <div class="conv-label" style="left:70%;"><div class="yr">2026 (now)</div><p>micro-SAM's own authors publish a direct benchmark of μSAM vs SAM2, SAM3, CellPoseSAM &amp; CellSAM (arXiv:2603.17845) — but the shipped library (v1.8.4) is still SAM1-only, verified via PyPI.</p></div>
+      <div class="conv-pt" style="left:94%;"></div>
+      <div class="conv-label" style="left:94%;"><div class="yr">Open question</div><p>Whether that benchmarking effort turns into an actual SAM2/SAM3-backed release remains to be seen — worth re-checking micro-SAM's changelog periodically.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ NEW MEDICAL MODELS ============ -->
+<div class="tab-panel" id="tab-medicalnew">
+  <div class="section-lead">
+    <h2>🏥 New 3D Medical Segmentation Models (Jan 2025 – Jul 2026)</h2>
+    <p>Nine models beyond what the main survey already covers (SAM-Med3D, VISTA3D, etc.), each verified against its GitHub/arXiv/HuggingFace page. Where full-text access was blocked, that's flagged rather than guessed.</p>
+  </div>
+
+  <div class="grid grid-2 reveal">
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Mar 2025 · DKFZ</span><h3><a href="https://arxiv.org/abs/2503.08373" target="_blank">nnInteractive ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>3D-native (not slice-by-slice) interactive segmentation, trained on 120+ heterogeneous 3D datasets (CT/MRI/PET/3D microscopy). Adds a novel <strong>lasso prompt</strong> alongside points/scribbles/boxes. Client/server split lets a lightweight client drive remote GPU inference.</p>
+      <p><strong>Benchmarks:</strong> +10.1 Dice over ScribblePrompt (points), +14.9 Dice over SAM2 (box prompts), +23.8 Dice for scribbles; consistently &gt;70 Dice across all evaluated datasets.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2503.08373" target="_blank">📄 Paper</a><a href="https://github.com/MIC-DKFZ/nnInteractive" target="_blank">💻 GitHub</a></div>
+      <div class="kw"><span>3D-native</span><span>Lasso prompt</span><span>napari/MITK/3D Slicer/ITK-SNAP</span></div>
+      <details class="impl"><summary>Implementation guide</summary>
+        <div class="impl-meta"><span><b>License:</b> code Apache-2.0, weights CC BY-NC-SA 4.0</span></div>
+        <div class="code-block"><span class="c1"># lightweight client only</span>
+pip install nninteractive-client
+<span class="c1"># full local GPU stack</span>
+pip install nnInteractive
+<span class="c1"># weights auto-download from Hugging Face on first use</span></div>
+        <div class="copy-btn" onclick="copyCode(this)">copy</div>
+      </details>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Sep 2025 · CVPR'25 Challenge</span><h3><a href="https://arxiv.org/abs/2509.15874" target="_blank">ENSAM ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>SegResNet-style U-Net (encoder + prompt encoder + mask decoder) with latent cross-attention and the Muon optimizer — trained <strong>from scratch</strong> (no pretrained backbone) on &lt;5,000 volumes across CT/MRI/PET/ultrasound/microscopy in just 6 hours on a single 32GB GPU. A deliberate low-compute counterpoint to giant pretrained foundation models.</p>
+      <p><strong>Benchmarks:</strong> CVPR 2025 challenge hidden test set — DSC AUC 2.404, NSD AUC 2.266; beats VISTA3D and SAM-Med3D baselines, matches SegVol despite far less data/compute.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2509.15874" target="_blank">📄 Paper</a><a href="https://arxiv.org/pdf/2511.01600" target="_blank">📄 Lite ENSAM</a><a href="https://www.codabench.org/competitions/5263/" target="_blank">🏆 Challenge</a></div>
+      <div class="kw"><span>Trained from scratch</span><span>6hr / 1 GPU</span><span>No public repo found yet</span></div>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Nov 2025 · DKFZ</span><h3><a href="https://arxiv.org/abs/2511.11450" target="_blank">VoxTell ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>Free-text promptable 3D segmentation — no spatial prompt at all. A vision-language model maps text (single words to full clinical sentences) directly to 3D masks via multi-stage vision-language fusion across decoder layers, aligning text and visual features at multiple scales. Trained on 62,000+ volumes spanning 1,000+ anatomical/pathological classes.</p>
+      <p><strong>Benchmarks:</strong> SOTA zero-shot on unseen datasets/modalities; strong cross-modality transfer and robustness to phrasing variation.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2511.11450" target="_blank">📄 Paper</a><a href="https://github.com/MIC-DKFZ/VoxTell" target="_blank">💻 GitHub</a><a href="https://huggingface.co/mrokuss/VoxTell" target="_blank">🤗 Weights</a><a href="https://napari-hub.org/plugins/napari-voxtell.html" target="_blank">🔌 napari plugin</a></div>
+      <div class="kw"><span>Free-text prompt</span><span>No spatial prompt needed</span><span>1000+ classes</span></div>
+      <details class="impl"><summary>Implementation guide</summary>
+        <div class="code-block">pip install napari-voxtell
+<span class="c1"># or use the standalone PyPI package + pretrained weights from HF
+# napari plugin gives interactive text-to-mask segmentation</span></div>
+        <div class="copy-btn" onclick="copyCode(this)">copy</div>
+      </details>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Apr 2025</span><h3><a href="https://arxiv.org/abs/2504.21336" target="_blank">UniBiomed ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>Combines a Multimodal LLM with a <strong>SAM2 backbone</strong> (sam2-hiera-large) to jointly produce diagnostic text <em>and</em> a pixel-level mask in one pass — grounded/LLM-guided segmentation rather than manual click/box prompting. Removes the need for a clinician to pre-diagnose and hand-craft a prompt. Evaluated across 10 biomedical imaging modalities (2D + volumetric).</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2504.21336" target="_blank">📄 Paper</a><a href="https://github.com/Luffy03/UniBiomed" target="_blank">💻 GitHub</a></div>
+      <div class="kw"><span>MLLM + SAM2</span><span>Diagnosis + mask</span><span>Apache-2.0</span></div>
+      <details class="impl"><summary>Implementation guide</summary>
+        <div class="code-block">git clone https://github.com/Luffy03/UniBiomed.git &amp;&amp; <span class="kw2">cd</span> UniBiomed
+<span class="c1"># conda env: Python 3.10 + torch 2.3.1 + mmcv</span>
+python example.py  <span class="c1"># loads from HF, calls predict_forward()</span></div>
+        <div class="copy-btn" onclick="copyCode(this)">copy</div>
+      </details>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Jan 2026</span><h3><a href="https://arxiv.org/abs/2601.10880" target="_blank">Medical SAM3 ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>Full-parameter fine-tune of Meta's <strong>SAM3</strong> on 33 medical datasets across 10 modalities. Its own motivation is notable: it demonstrates vanilla SAM3 degrades substantially on medical data and that its apparent zero-shot competitiveness relies heavily on ground-truth-derived boxes. Targets pure text-prompt segmentation (e.g. "Polyp", "Tumor") for a more automated workflow, plus box/point support and 3D evaluation code.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2601.10880" target="_blank">📄 Paper</a><a href="https://github.com/AIM-Research-Lab/Medical-SAM3" target="_blank">💻 GitHub</a><a href="https://huggingface.co/papers/2601.10880" target="_blank">🤗 HF page</a></div>
+      <div class="kw"><span>SAM3 fine-tune</span><span>Text-prompt seg.</span><span>Actively developed</span></div>
+      <details class="impl"><summary>Implementation guide</summary>
+        <div class="code-block">pip install -e <span class="str">".[train]"</span>
+<span class="c1"># README marks 3D training as released;
+# demo + further data scaling "in progress" as of Jul 2026</span></div>
+        <div class="copy-btn" onclick="copyCode(this)">copy</div>
+      </details>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Jan 2026</span><h3><a href="https://arxiv.org/abs/2601.12297" target="_blank">SynthFM-3D ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>Not a new network — a <strong>synthetic-data training methodology</strong>. An analytical framework mathematically models 3D variability in anatomy shape, contrast, boundary sharpness, and noise to generate purely synthetic 3D training volumes (zero real patient data/annotations), then fine-tunes SAM2 on 10,000 synthetic volumes.</p>
+      <p><strong>Benchmarks:</strong> statistically significant Dice improvements over pretrained SAM2 on 11 anatomical structures across 3 modalities and 5 public datasets — with zero real training data.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2601.12297" target="_blank">📄 Paper</a><a href="https://arxiv.org/html/2504.08177" target="_blank">📄 Related SynthFM</a></div>
+      <div class="kw"><span>Zero real data</span><span>Synthetic pretraining</span><span>Paper-stage</span></div>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">2026 · MICCAI'26</span><h3><a href="https://arxiv.org/pdf/2606.18886" target="_blank">DINO-Med3D ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>A distinct architectural bet from the whole SAM lineage: repurposes a <strong>pretrained DINOv3 ViT</strong> (2D self-supervised, not built for volumes) via two-stage progressive adaptation — Stage 1 fine-tunes on 2.5D stacked slices; Stage 2 fuses with a high-res 3D CNN via gated fusion, lifts to 3D feature pyramids, and decodes with a UPerNet-style 3D decoder plus a detail-recovery stream for boundary precision.</p>
+      <p><strong>Benchmarks:</strong> reported to "significantly outperform" SOTA baselines on 5 public datasets (Dice, HD95).</p>
+      <div class="mc-links"><a href="https://arxiv.org/pdf/2606.18886" target="_blank">📄 Paper</a><a href="https://github.com/HaoyuHu1/DINO-Med3D" target="_blank">💻 GitHub</a></div>
+      <div class="kw"><span>DINOv3 backbone</span><span>Not SAM-based</span><span>LoRA-optional</span></div>
+      <details class="impl"><summary>Implementation guide</summary>
+        <div class="code-block">pip install -r requirements.txt   <span class="c1"># Python 3.10, torch>=2.5.1+CUDA</span>
+<span class="c1"># optional: medpy (HD95 metric), peft (LoRA fine-tuning)</span>
+python train.py --config configs/default.yaml</div>
+        <div class="copy-btn" onclick="copyCode(this)">copy</div>
+      </details>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">2026 · Yale</span><h3><a href="https://arxiv.org/abs/2605.21835" target="_blank">Whole-Body FDG PET/CT Foundation Model ↗</a></h3></div><span class="badge medical">Medical</span></div>
+      <p>Hierarchical UNet with <strong>early channel-wise concatenation</strong> of PET and CT so anatomical and metabolic features interact from the first embedding layer — rather than late-fusing separately-encoded modalities. Targets whole-body oncologic tumor/lesion segmentation.</p>
+      <p><strong>Benchmarks:</strong> trained/validated on 4,997 harmonized scans from 4 public datasets; with only 10% of labeled training data, matches performance of models trained from scratch on the full dataset — strong label efficiency.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2605.21835" target="_blank">📄 Paper</a></div>
+      <div class="kw"><span>PET+CT fusion</span><span>Oncology</span><span>Label-efficient</span></div>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <h3>Honorable Mentions (real, but time-boxed out of full profiles)</h3>
+    <ul style="color:var(--text-dim); padding-left:1.2rem; line-height:2;">
+      <li><strong>Lite ENSAM</strong> (<a href="https://arxiv.org/pdf/2511.01600" target="_blank">arXiv:2511.01600</a>) — lightweight, cancer-focused derivative of ENSAM for 3D CT.</li>
+      <li><strong>MedSAMix</strong> (<a href="https://arxiv.org/abs/2508.11032" target="_blank">arXiv:2508.11032</a>) — training-free model-merging across medical SAM variants.</li>
+      <li><strong>RFMedSAM 2</strong> (<a href="https://arxiv.org/abs/2502.02741" target="_blank">arXiv:2502.02741</a>) — automatic prompt refinement for SAM2-based volumetric segmentation.</li>
+      <li><strong>SlicerNNInteractive</strong> (<a href="https://arxiv.org/abs/2504.07991" target="_blank">arXiv:2504.07991</a>) — a 3D Slicer extension packaging nnInteractive for clinical GUI use.</li>
+      <li><strong>Comprehensive Analysis of Mamba for 3D Medical Segmentation</strong> (<a href="https://arxiv.org/abs/2503.19308" target="_blank">arXiv:2503.19308</a>) — a benchmark/survey of the Mamba-based 3D-segmenter trend.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ OTHER DOMAINS ============ -->
+<div class="tab-panel" id="tab-otherdomains">
+  <div class="section-lead">
+    <h2>☁️ New Microscopy &amp; Point-Cloud / Scene Models (2025–26)</h2>
+    <p>Beyond medicine: four genuinely new models for cellular microscopy, light-sheet volumes, and 3D point clouds/scenes.</p>
+  </div>
+
+  <div class="grid grid-2 reveal">
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Apr 2025 · Janelia</span><h3><a href="https://www.biorxiv.org/content/10.1101/2025.04.28.651001v1" target="_blank">Cellpose-SAM ↗</a></h3></div><span class="badge new">Microscopy</span></div>
+      <p>Adapts SAM's pretrained transformer image encoder into the existing Cellpose framework, replacing its original encoder while keeping Cellpose's flow-field instance decoding. Trained on 22,826 light-microscopy/histopathology images with 3.34M annotated cells and nuclei.</p>
+      <p><strong>Benchmarks:</strong> substantially outperforms inter-human annotator agreement, approaches the human-consensus upper bound; robust to channel shuffling, cell-size variation, shot noise, downsampling, isotropic/anisotropic blur.</p>
+      <div class="mc-links"><a href="https://www.biorxiv.org/content/10.1101/2025.04.28.651001v1" target="_blank">📄 Preprint</a><a href="https://github.com/MouseLand/cellpose" target="_blank">💻 GitHub</a></div>
+      <div class="kw"><span>SAM encoder + Cellpose</span><span>Superhuman generalization</span></div>
+      <details class="impl"><summary>Implementation guide</summary>
+        <div class="code-block">pip install cellpose   <span class="c1"># bundles the SAM-based model in latest release</span>
+<span class="c1"># or use the free hosted batch demo on the Cellpose website (via Hugging Face)</span></div>
+        <div class="copy-btn" onclick="copyCode(this)">copy</div>
+      </details>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">2026 · Imperial College London</span><h3><a href="https://arxiv.org/abs/2605.26026" target="_blank">3D Light-Sheet Microscopy Foundation Model ↗</a></h3></div><span class="badge new">Microscopy</span></div>
+      <p>A genuinely <strong>3D-native, multimodal</strong> foundation model for light-sheet fluorescence microscopy volumes — pretrained via joint masked-volume reconstruction + image-text alignment on a large curated multi-organism, multi-stain, multi-protocol dataset. Produces transferable volumetric representations for few-shot segmentation, classification, and deblurring from one shared backbone.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2605.26026" target="_blank">📄 Paper</a></div>
+      <div class="kw"><span>3D-native (not slice-based)</span><span>Few-shot</span><span>Paper-stage</span></div>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Mar 2026 · Bosch/Lübeck</span><h3><a href="https://arxiv.org/abs/2603.25165" target="_blank">PointINS ↗</a></h3></div><span class="badge new">Point Cloud</span></div>
+      <p>Addresses a known weakness of point-cloud self-supervised foundation models: representations transfer poorly to instance localization without full fine-tuning. Adds an orthogonal offset branch that jointly learns semantic understanding and instance/geometric reasoning during pretraining — instance-awareness "for free."</p>
+      <p><strong>Benchmarks:</strong> +3.5% mAP average for indoor instance segmentation, +4.1% PQ for outdoor panoptic segmentation over prior SSL baselines.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2603.25165" target="_blank">📄 Paper</a></div>
+      <div class="kw"><span>Self-supervised</span><span>Instance-aware</span><span>Paper-stage</span></div>
+    </div>
+
+    <div class="model-card">
+      <div class="mc-top"><div><span class="date-chip">Jan 2026 · NVIDIA</span><h3><a href="https://arxiv.org/abs/2601.09575" target="_blank">OpenVoxel ↗</a></h3></div><span class="badge new">Point Cloud</span></div>
+      <p>Training-free open-vocabulary 3D scene understanding. Operates on sparse-voxel-rasterization reconstructions from multi-view images; instead of embedding CLIP/BERT features per-voxel, groups voxels into object clusters and captions each with a multimodal LLM, then matches text-to-text for open-vocab / referring-expression queries.</p>
+      <p><strong>Benchmarks:</strong> +13.2% over training-based ReferSplat on Ref-LeRF; ~10× faster since no per-scene training is required.</p>
+      <div class="mc-links"><a href="https://arxiv.org/abs/2601.09575" target="_blank">📄 Paper</a><a href="https://research.nvidia.com/labs/twn/publication/cvpr_2026_openvoxel/" target="_blank">🌐 Project Page</a></div>
+      <div class="kw"><span>Training-free</span><span>MLLM captioning</span><span>Gaussian-splat adjacent</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CHEAT SHEET ============ -->
+<div class="tab-panel" id="tab-cheatsheet">
+  <div class="section-lead">
+    <h2>📦 Implementation Cheat-Sheet</h2>
+    <p>Every model from this report, one row each: install command, hardware need, and license — for quickly picking a starting point.</p>
+  </div>
+  <div class="card reveal">
+    <div class="tbl-wrap">
+      <table class="dtable cheat-table">
+        <tr><th>Model</th><th>Install</th><th>Hardware</th><th>License</th></tr>
+        <tr><td>SAM2 / SAM2.1</td><td class="mono">pip install -e . (from source)</td><td>GPU, 4–12GB VRAM</td><td>Apache-2.0</td></tr>
+        <tr><td>MedSAM2</td><td class="mono">pip install -e ".[dev]"</td><td>GPU (CUDA 12.4)</td><td>Apache-2.0</td></tr>
+        <tr><td>SAM 3D Objects/Body</td><td class="mono">git clone facebookresearch/sam-3d-*</td><td>GPU, diffusion-scale</td><td>SAM License (custom)</td></tr>
+        <tr><td>micro-sam</td><td class="mono">mamba install -c conda-forge micro_sam</td><td>GPU recommended for 3D</td><td>MIT (code)</td></tr>
+        <tr><td>nnInteractive</td><td class="mono">pip install nninteractive-client</td><td>Client: CPU; server: GPU</td><td>Apache-2.0 (weights CC BY-NC-SA)</td></tr>
+        <tr><td>VoxTell</td><td class="mono">pip install napari-voxtell</td><td>GPU for inference</td><td>Open (see repo)</td></tr>
+        <tr><td>UniBiomed</td><td class="mono">git clone + conda (py3.10, torch 2.3.1)</td><td>GPU</td><td>Apache-2.0</td></tr>
+        <tr><td>Medical SAM3</td><td class="mono">pip install -e ".[train]"</td><td>GPU</td><td>Open (see repo)</td></tr>
+        <tr><td>DINO-Med3D</td><td class="mono">pip install -r requirements.txt</td><td>GPU, torch≥2.5.1</td><td>Open (see repo)</td></tr>
+        <tr><td>Cellpose-SAM</td><td class="mono">pip install cellpose</td><td>GPU recommended, CPU ok</td><td>BSD-3-Clause</td></tr>
+        <tr><td>ENSAM / SynthFM-3D / PET-CT FM / PointINS / OpenVoxel</td><td class="mono">paper-stage — no confirmed public code yet</td><td>—</td><td>—</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SOURCES ============ -->
+<div class="tab-panel" id="tab-sources">
+  <div class="section-lead">
+    <h2>🔗 Full Source List</h2>
+    <p>Every link cited across this report, grouped by section. Compiled via multi-agent web research; where full-text access was blocked (nature.com/PMC/bioRxiv/arXiv full-text endpoints returned repeated 403s in this environment), findings are marked accordingly inline in the relevant tab rather than fabricated.</p>
+  </div>
+
+  <div class="card reveal">
+    <div class="src-group">
+      <h4>Meta SAM Family</h4>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2408.00714" target="_blank">SAM 2 paper (arXiv:2408.00714)</a></li>
+        <li><a href="https://github.com/facebookresearch/sam2" target="_blank">SAM2 GitHub</a> · <a href="https://ai.meta.com/blog/segment-anything-2/" target="_blank">Meta blog</a> · <a href="https://ai.meta.com/datasets/segment-anything-video/" target="_blank">SA-V dataset</a></li>
+        <li><a href="https://arxiv.org/abs/2504.03600" target="_blank">MedSAM2 (arXiv:2504.03600)</a> · <a href="https://github.com/bowang-lab/MedSAM2" target="_blank">GitHub</a> · <a href="https://medsam2.github.io/" target="_blank">Project page</a></li>
+        <li><a href="https://ai.meta.com/blog/sam-3d/" target="_blank">SAM 3D announcement</a> · <a href="https://arxiv.org/abs/2511.16624" target="_blank">SAM 3D Objects (arXiv:2511.16624)</a> · <a href="https://arxiv.org/abs/2602.15989" target="_blank">SAM 3D Body (arXiv:2602.15989)</a></li>
+        <li><a href="https://arxiv.org/abs/2511.21926" target="_blank">SAM2 vs SAM3 zero-shot 3D medical (arXiv:2511.21926)</a></li>
+        <li><a href="https://arxiv.org/abs/2408.16768" target="_blank">SAM2Point (arXiv:2408.16768)</a> · <a href="https://github.com/ZiyuGuo99/SAM2Point" target="_blank">GitHub</a></li>
+        <li><a href="https://arxiv.org/abs/2408.06170" target="_blank">Zero-shot abdominal CT SAM2 (arXiv:2408.06170)</a> · <a href="https://arxiv.org/abs/2408.11210" target="_blank">3D CT review (arXiv:2408.11210)</a> · <a href="https://arxiv.org/abs/2410.16268" target="_blank">SAM2Long (arXiv:2410.16268)</a></li>
+      </ul>
+    </div>
+    <div class="src-group">
+      <h4>micro-SAM</h4>
+      <ul>
+        <li><a href="https://github.com/computational-cell-analytics/micro-sam" target="_blank">micro-sam GitHub</a> · <a href="https://computational-cell-analytics.github.io/micro-sam/micro_sam.html" target="_blank">API docs</a></li>
+        <li><a href="https://www.nature.com/articles/s41592-024-02580-4" target="_blank">Nature Methods paper</a> (DOI 10.1038/s41592-024-02580-4) · <a href="https://pubmed.ncbi.nlm.nih.gov/39939717/" target="_blank">PubMed</a></li>
+        <li><a href="https://arxiv.org/abs/2603.17845" target="_blank">Revisiting foundation models for cell instance segmentation (arXiv:2603.17845, MIDL 2026)</a> — source of the LIVECell mSA numbers</li>
+        <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12927526/" target="_blank">MitoEM 2.0 benchmark</a></li>
+        <li><a href="https://github.com/computational-cell-analytics/medico-sam" target="_blank">medico-sam</a> (IEEE TMI 2025) · <a href="https://github.com/computational-cell-analytics/patho-sam" target="_blank">patho-sam</a> (MIDL 2025) · <a href="https://github.com/computational-cell-analytics/peft-sam" target="_blank">peft-sam</a> (MIDL 2025)</li>
+        <li><a href="https://arxiv.org/abs/2504.21544" target="_blank">SAM4EM (arXiv:2504.21544)</a> · <a href="https://arxiv.org/abs/2505.10769" target="_blank">uLLSAM (arXiv:2505.10769)</a> · <a href="https://arxiv.org/abs/2403.07951" target="_blank">SAMDA (arXiv:2403.07951)</a></li>
+        <li><a href="https://github.com/JamaliLab/SAM-EM" target="_blank">SAM-EM (liquid-phase TEM, built on SAM2 directly, NeurIPS 2025)</a></li>
+        <li><a href="https://pypi.org/pypi/micro_sam/json" target="_blank">micro_sam PyPI package metadata</a> · <a href="https://github.com/computational-cell-analytics/micro-sam/blob/master/RELEASE_OVERVIEW.md" target="_blank">RELEASE_OVERVIEW.md</a> — used to verify the SAM2-backbone question directly</li>
+      </ul>
+    </div>
+    <div class="src-group">
+      <h4>Head-to-Head Evidence</h4>
+      <ul>
+        <li><a href="https://link.springer.com/article/10.1007/s10278-025-01778-y" target="_blank">SAM/SAM2/MedSAM/MedSAM2 lung segmentation comparison</a></li>
+        <li><a href="https://arxiv.org/abs/2501.11734" target="_blank">MedicoSAM (arXiv:2501.11734)</a></li>
+        <li><a href="https://arxiv.org/abs/2509.09943" target="_blank">Segment Anything for Cell Tracking (arXiv:2509.09943)</a></li>
+        <li><a href="https://www.sciencedirect.com/science/article/pii/S2772834X26000126" target="_blank">SAMM — SAM2 for material micrographs</a></li>
+        <li><a href="https://arxiv.org/abs/2408.03286" target="_blank">Biomedical SAM 2 / BioSAM2 (arXiv:2408.03286)</a></li>
+        <li><a href="https://arxiv.org/abs/2603.17845" target="_blank">Revisiting foundation models for cell instance segmentation (arXiv:2603.17845, MIDL 2026)</a> — the real μSAM-vs-SAM2/SAM3 benchmark, incl. APG and LIVECell mSA numbers</li>
+      </ul>
+      <p style="font-size:.78rem; color:var(--text-faint); margin-top:.5rem;">⚠️ A correction: an earlier research pass claimed specific micro-sam GitHub PRs (#1191/#1246/#1252/#1269/#1277) were merging a SAM2 backbone. Direct verification against micro_sam's PyPI dependency list and release notes found no such integration — that claim was a research-agent hallucination and has been corrected throughout this report rather than removed silently.</p>
+    </div>
+    <div class="src-group">
+      <h4>New Medical 3D Models</h4>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2503.08373" target="_blank">nnInteractive (arXiv:2503.08373)</a> · <a href="https://github.com/MIC-DKFZ/nnInteractive" target="_blank">GitHub</a></li>
+        <li><a href="https://arxiv.org/abs/2509.15874" target="_blank">ENSAM (arXiv:2509.15874)</a> · <a href="https://arxiv.org/pdf/2511.01600" target="_blank">Lite ENSAM</a> · <a href="https://www.codabench.org/competitions/5263/" target="_blank">CVPR'25 Challenge</a></li>
+        <li><a href="https://arxiv.org/abs/2511.11450" target="_blank">VoxTell (arXiv:2511.11450)</a> · <a href="https://github.com/MIC-DKFZ/VoxTell" target="_blank">GitHub</a> · <a href="https://huggingface.co/mrokuss/VoxTell" target="_blank">HF weights</a></li>
+        <li><a href="https://arxiv.org/abs/2504.21336" target="_blank">UniBiomed (arXiv:2504.21336)</a> · <a href="https://github.com/Luffy03/UniBiomed" target="_blank">GitHub</a></li>
+        <li><a href="https://arxiv.org/abs/2601.10880" target="_blank">Medical SAM3 (arXiv:2601.10880)</a> · <a href="https://github.com/AIM-Research-Lab/Medical-SAM3" target="_blank">GitHub</a></li>
+        <li><a href="https://arxiv.org/abs/2601.12297" target="_blank">SynthFM-3D (arXiv:2601.12297)</a></li>
+        <li><a href="https://arxiv.org/pdf/2606.18886" target="_blank">DINO-Med3D (arXiv:2606.18886)</a> · <a href="https://github.com/HaoyuHu1/DINO-Med3D" target="_blank">GitHub</a></li>
+        <li><a href="https://arxiv.org/abs/2605.21835" target="_blank">Whole-Body PET/CT Foundation Model (arXiv:2605.21835)</a></li>
+        <li><a href="https://arxiv.org/abs/2508.11032" target="_blank">MedSAMix</a> · <a href="https://arxiv.org/abs/2502.02741" target="_blank">RFMedSAM 2</a> · <a href="https://arxiv.org/abs/2504.07991" target="_blank">SlicerNNInteractive</a> · <a href="https://arxiv.org/abs/2503.19308" target="_blank">Mamba 3D survey</a></li>
+      </ul>
+    </div>
+    <div class="src-group">
+      <h4>New Microscopy &amp; Point-Cloud Models</h4>
+      <ul>
+        <li><a href="https://www.biorxiv.org/content/10.1101/2025.04.28.651001v1" target="_blank">Cellpose-SAM preprint</a> · <a href="https://github.com/MouseLand/cellpose" target="_blank">GitHub</a></li>
+        <li><a href="https://arxiv.org/abs/2605.26026" target="_blank">3D Light-Sheet Microscopy FM (arXiv:2605.26026)</a></li>
+        <li><a href="https://arxiv.org/abs/2603.25165" target="_blank">PointINS (arXiv:2603.25165)</a></li>
+        <li><a href="https://arxiv.org/abs/2601.09575" target="_blank">OpenVoxel (arXiv:2601.09575)</a> · <a href="https://research.nvidia.com/labs/twn/publication/cvpr_2026_openvoxel/" target="_blank">NVIDIA project page</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div class="footer">
+  <p>🧬 Deep-dive companion compiled July 2026 via multi-agent research (4 parallel research agents across SAM2/Meta, micro-SAM, comparisons, and 2025–26 model discovery)</p>
+  <p>📁 Part of the <a href="survey_report.html">3D Segmentation &amp; Explainable AI Survey</a> — <a href="survey_report.html">← back to the main report</a></p>
+</div>
+
+<script>
+function showTab(id, evt){
+  document.querySelectorAll('.tab-panel').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(evt && evt.target && evt.target.classList.contains('nav-tab')) evt.target.classList.add('active');
+  else document.querySelector('.nav-tab[onclick*="\'' + id + '\'"]').classList.add('active');
+  setTimeout(()=>{ initRadar(); revealCheck(); }, 20);
+}
+
+function copyCode(btn){
+  const block = btn.parentElement;
+  const text = block.innerText.replace('copy','').trim();
+  navigator.clipboard && navigator.clipboard.writeText(text);
+  const old = btn.textContent; btn.textContent='copied!';
+  setTimeout(()=>btn.textContent=old, 1200);
+}
+
+let radarChart;
+function initRadar(){
+  const el = document.getElementById('radarChart');
+  if(!el || radarChart) return;
+  if(typeof Chart === 'undefined'){
+    el.parentElement.innerHTML = '<p style="color:var(--text-faint); font-size:.85rem; text-align:center; padding:2rem;">Chart.js failed to load from CDN (offline or blocked network) — the qualitative comparison is also fully described in the Evidence Table above.</p>';
+    return;
+  }
+  radarChart = new Chart(el, {
+    type:'radar',
+    data:{
+      labels:['Fine boundary\nprecision','Cross-slice\nconsistency','Zero-shot\nreadiness','Ease of\nfine-tuning','Compute\nefficiency','Ecosystem/tooling\nmaturity'],
+      datasets:[
+        {label:'micro-SAM (finetuned)', data:[8.5,5.5,4,7.5,6.5,8], borderColor:'#f472b6', backgroundColor:'rgba(244,114,182,.18)', pointBackgroundColor:'#f472b6'},
+        {label:'SAM2/SAM3 (zero-shot)', data:[5,7.5,6.5,4,5,7], borderColor:'#5aa2ff', backgroundColor:'rgba(90,162,255,.18)', pointBackgroundColor:'#5aa2ff'},
+        {label:'MedSAM2 (finetuned)', data:[7,7.5,6,6,6,6.5], borderColor:'#34d399', backgroundColor:'rgba(52,211,153,.14)', pointBackgroundColor:'#34d399'}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{ r:{ min:0, max:10, grid:{color:'rgba(255,255,255,.08)'}, angleLines:{color:'rgba(255,255,255,.08)'},
+        pointLabels:{color:'#9aa5b8', font:{size:10}}, ticks:{display:false, backdropColor:'transparent'} } },
+      plugins:{ legend:{ labels:{color:'#c9d2e3', font:{size:11}} } }
+    }
+  });
+}
+
+function revealCheck(){
+  document.querySelectorAll('.reveal:not(.show)').forEach(el=>{
+    const r = el.getBoundingClientRect();
+    if(r.top < window.innerHeight - 60) el.classList.add('show');
+  });
+}
+window.addEventListener('scroll', revealCheck);
+window.addEventListener('DOMContentLoaded', ()=>{ revealCheck(); initRadar(); });
+</script>
+
+</body>
+</html>
