@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LocateAnything vs. micro-SAM for EM Segmentation — Highlight Report</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AF%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080b13; --bg2:#0d1220; --surface:rgba(255,255,255,.04); --surface-hi:rgba(255,255,255,.075);
+  --border:rgba(255,255,255,.09); --border-hi:rgba(255,255,255,.18);
+  --text:#e7ebf3; --text-dim:#9aa5b8; --text-faint:#5f6b80;
+  --meta:#5aa2ff; --meta-glow:rgba(90,162,255,.35);
+  --microsam:#f472b6; --microsam-glow:rgba(244,114,182,.35);
+  --medical:#34d399; --medical-glow:rgba(52,211,153,.32);
+  --micro:#fbbf24; --micro-glow:rgba(251,191,36,.32);
+  --new:#a78bfa; --new-glow:rgba(167,139,250,.32);
+  --danger:#fb7185; --code-bg:#060a12;
+  --r-lg:1.1rem; --r-md:.7rem; --r-sm:.4rem;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(167,139,250,.16), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 100% 10%, rgba(244,114,182,.12), transparent 55%),
+    radial-gradient(ellipse 800px 500px at 50% 100%, rgba(90,162,255,.08), transparent 55%),
+    var(--bg);
+  color:var(--text); min-height:100vh; line-height:1.65;
+}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif; letter-spacing:-.01em;}
+code, .mono{font-family:'JetBrains Mono',monospace;}
+a{color:var(--meta);}
+::selection{background:var(--new-glow);}
+
+.bridge-bar{
+  background:linear-gradient(90deg, rgba(167,139,250,.14), rgba(244,114,182,.1));
+  border-bottom:1px solid var(--border); padding:.65rem 1.5rem; text-align:center;
+  font-size:.85rem; color:var(--text-dim); position:sticky; top:0; z-index:200; backdrop-filter:blur(14px);
+}
+.bridge-bar a{color:var(--meta); font-weight:600; text-decoration:none;}
+.bridge-bar a:hover{text-decoration:underline;}
+
+.header{ padding:4.5rem 1.5rem 3rem; text-align:center; position:relative; overflow:hidden;}
+.header::before{
+  content:''; position:absolute; inset:0; z-index:-1; opacity:.5;
+  background-image:
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size:42px 42px;
+  mask-image:radial-gradient(ellipse 700px 400px at 50% 20%, black, transparent 75%);
+}
+.eyebrow{
+  display:inline-flex; align-items:center; gap:.5rem; font-size:.78rem; font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--new); background:rgba(167,139,250,.1);
+  border:1px solid rgba(167,139,250,.3); padding:.4rem 1rem; border-radius:2rem; margin-bottom:1.5rem;
+}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--new); box-shadow:0 0 8px var(--new); animation:pulse-dot 2s infinite;}
+@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:.3;}}
+.header h1{
+  font-size:clamp(2rem, 5vw, 3.2rem); font-weight:700; max-width:920px; margin:0 auto 1.25rem; line-height:1.12;
+  background:linear-gradient(135deg,#fff 30%, var(--new) 62%, var(--microsam) 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.header .subtitle{max-width:720px; margin:0 auto 2rem; color:var(--text-dim); font-size:1.05rem;}
+.header-stats{display:flex; justify-content:center; gap:.75rem; flex-wrap:wrap;}
+.hstat{background:var(--surface); border:1px solid var(--border); padding:.55rem 1.1rem; border-radius:2rem; font-size:.82rem; color:var(--text-dim);}
+.hstat strong{color:var(--text); font-family:'Space Grotesk',sans-serif;}
+
+.main{max-width:1100px; margin:0 auto; padding:1.5rem 1.25rem 5rem;}
+
+.tldr{
+  background:linear-gradient(135deg, rgba(167,139,250,.1), rgba(244,114,182,.06));
+  border:1px solid var(--border-hi); border-radius:var(--r-lg); padding:1.6rem 1.8rem; margin-bottom:2.75rem;
+}
+.tldr h2{font-size:1.15rem; margin-bottom:.9rem; display:flex; align-items:center; gap:.5rem;}
+.tldr ol{margin:0; padding-left:1.2rem;}
+.tldr li{color:var(--text-dim); margin:.55rem 0; font-size:.95rem;}
+.tldr li strong{color:var(--text);}
+
+section.block{margin-bottom:3rem; scroll-margin-top:70px;}
+.section-lead{margin-bottom:1.4rem;}
+.section-lead h2{font-size:1.6rem; margin-bottom:.5rem; display:flex; align-items:center; gap:.55rem;}
+.section-lead .qtag{font-size:.72rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--new); background:rgba(167,139,250,.12); border:1px solid rgba(167,139,250,.3); padding:.25rem .7rem; border-radius:1rem;}
+.section-lead p{color:var(--text-dim);}
+
+p.body{color:var(--text-dim); margin:.9rem 0;}
+p.body strong{color:var(--text);}
+
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:1.6rem;
+  backdrop-filter:blur(10px); position:relative; overflow:hidden; margin:1.1rem 0;
+}
+
+.callout{border-left:3px solid var(--meta); background:rgba(90,162,255,.07); border-radius:0 var(--r-md) var(--r-md) 0; padding:1.1rem 1.3rem; margin:1.2rem 0;}
+.callout.pink{border-color:var(--microsam); background:rgba(244,114,182,.07);}
+.callout.green{border-color:var(--medical); background:rgba(52,211,153,.07);}
+.callout.amber{border-color:var(--micro); background:rgba(251,191,36,.07);}
+.callout.purple{border-color:var(--new); background:rgba(167,139,250,.07);}
+.callout.danger{border-color:var(--danger); background:rgba(251,113,133,.08);}
+.callout h4{font-size:.95rem; margin-bottom:.4rem; display:flex; align-items:center; gap:.4rem;}
+.callout p{color:var(--text-dim); font-size:.92rem;}
+.callout p + p{margin-top:.5rem;}
+
+.badge{display:inline-block; font-size:.68rem; font-weight:700; letter-spacing:.02em; padding:.2rem .6rem; border-radius:1rem; text-transform:uppercase;}
+.badge.meta{background:rgba(90,162,255,.15); color:var(--meta); border:1px solid rgba(90,162,255,.3);}
+.badge.microsam{background:rgba(244,114,182,.15); color:var(--microsam); border:1px solid rgba(244,114,182,.3);}
+.badge.new{background:rgba(167,139,250,.15); color:var(--new); border:1px solid rgba(167,139,250,.3);}
+.badge.danger{background:rgba(251,113,133,.15); color:var(--danger); border:1px solid rgba(251,113,133,.3);}
+.badge.green{background:rgba(52,211,153,.15); color:var(--medical); border:1px solid rgba(52,211,153,.3);}
+
+/* Pipeline diagram */
+.pipe{display:flex; align-items:stretch; gap:.6rem; flex-wrap:wrap; justify-content:center; margin:1.3rem 0;}
+.pipe-node{background:var(--surface-hi); border:1px solid var(--border-hi); border-radius:var(--r-sm); padding:.85rem 1rem; font-size:.82rem; text-align:center; min-width:130px; display:flex; flex-direction:column; gap:.25rem; justify-content:center;}
+.pipe-node .pn-t{font-weight:700; color:var(--text); font-family:'Space Grotesk',sans-serif;}
+.pipe-node .pn-s{font-size:.72rem; color:var(--text-faint);}
+.pipe-node.accent{border-color:var(--new); background:rgba(167,139,250,.1);}
+.pipe-arrow{align-self:center; color:var(--text-faint); font-size:1.3rem;}
+
+/* Block-type grid */
+.blocks{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.8rem; margin:1.2rem 0;}
+.blk{border:1px solid var(--border); border-radius:var(--r-md); padding:1rem 1.1rem; background:var(--surface);}
+.blk .bt{font-family:'JetBrains Mono',monospace; font-size:.82rem; font-weight:600; margin-bottom:.35rem;}
+.blk.b-sem .bt{color:var(--meta);} .blk.b-box .bt{color:var(--new);} .blk.b-neg .bt{color:var(--danger);} .blk.b-end .bt{color:var(--micro);}
+.blk p{font-size:.82rem; color:var(--text-dim);}
+
+.tbl-wrap{overflow-x:auto; border-radius:var(--r-md); border:1px solid var(--border); margin:1.2rem 0;}
+table.dtable{width:100%; border-collapse:collapse; font-size:.86rem; min-width:520px;}
+table.dtable th{background:var(--surface-hi); text-align:left; padding:.7rem .9rem; font-weight:600; white-space:nowrap; border-bottom:1px solid var(--border);}
+table.dtable td{padding:.7rem .9rem; border-bottom:1px solid var(--border); color:var(--text-dim); vertical-align:top;}
+table.dtable tr:last-child td{border-bottom:none;}
+table.dtable td.mono{font-family:'JetBrains Mono',monospace; font-size:.78rem; color:var(--text);}
+table.dtable td strong{color:var(--text);}
+
+.verdict{display:flex; gap:1rem; align-items:flex-start; background:var(--surface); border:1px solid var(--border-hi); border-radius:var(--r-md); padding:1.2rem 1.4rem; margin:1.3rem 0;}
+.verdict .vicon{font-size:1.6rem; line-height:1;}
+.verdict .vbody h4{font-size:1rem; margin-bottom:.3rem;}
+.verdict .vbody p{color:var(--text-dim); font-size:.9rem;}
+
+.footer{text-align:center; padding:3rem 1.5rem 2rem; color:var(--text-faint); font-size:.85rem; border-top:1px solid var(--border); margin-top:3rem;}
+.footer a{color:var(--meta); text-decoration:none;}
+
+.src-group{margin-top:1rem;}
+.src-group ul{list-style:none; padding:0;}
+.src-group li{font-size:.83rem; padding:.35rem 0; border-bottom:1px dashed var(--border); color:var(--text-dim); word-break:break-word;}
+.src-group li a{color:var(--text);}
+.src-group li a:hover{color:var(--meta);}
+
+.reveal{opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease;}
+.reveal.show{opacity:1; transform:translateY(0);}
+
+@media (max-width:700px){
+  .header{padding:3rem 1rem 2.5rem;}
+  .verdict{flex-direction:column; gap:.5rem;}
+}
+</style>
+</head>
+<body>
+
+<div class="bridge-bar">
+  &#129516; Part of the 3D-segmentation research set &mdash;
+  <a href="index.html">Model survey</a> &middot;
+  <a href="foundation-models-deep-dive.html">micro-SAM vs. SAM2/SAM3 deep dive</a>
+</div>
+
+<header class="header">
+  <span class="eyebrow"><span class="dot"></span>Highlight Report &middot; July 2026</span>
+  <h1>LocateAnything for EM Segmentation?</h1>
+  <p class="subtitle">How NVIDIA's LocateAnything handles tokenization and bounding boxes internally, whether it is a feasible path for electron-microscopy segmentation the way micro-SAM is used today, and which SAM generation actually powers micro-SAM.</p>
+  <div class="header-stats">
+    <span class="hstat"><strong>3</strong> questions answered</span>
+    <span class="hstat"><strong>LocateAnything-3B</strong> &middot; NVIDIA</span>
+    <span class="hstat"><strong>micro-SAM</strong> &middot; SAM1 backbone</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="tldr reveal">
+    <h2>&#9889; Bottom line up front</h2>
+    <ol>
+      <li><strong>LocateAnything does not segment.</strong> It is a vision-language <em>grounding &amp; object-detection</em> model. Its only outputs are <strong>bounding boxes and points</strong> &mdash; never pixel masks. So "how it does segmentation internally" has no answer: it localizes, it does not segment.</li>
+      <li><strong>Not a drop-in for EM segmentation.</strong> micro-SAM produces dense instance <em>masks</em> on in-domain microscopy; LocateAnything produces boxes from <em>text descriptions</em> on natural-image / GUI / document data. At most it could act as an out-of-domain box-prompt generator feeding a SAM mask decoder &mdash; a role micro-SAM already covers better.</li>
+      <li><strong>micro-SAM uses SAM&nbsp;1 &mdash; neither SAM2 nor SAM3.</strong> Its finetuned encoders are SAM's ViT-T/B/L/H image encoders. SAM2 uses Hiera encoders; SAM3 is Meta's Nov-2025 release. SAM2/SAM3 support is roadmap-only, not the shipped backbone.</li>
+    </ol>
+  </div>
+
+  <!-- Q1 -->
+  <section class="block reveal">
+    <div class="section-lead">
+      <h2><span class="qtag">Q1</span> How LocateAnything works internally</h2>
+      <p>Tokenization, bounding boxes, and the reason "segmentation" is a category error for this model.</p>
+    </div>
+
+    <div class="callout danger">
+      <h4>&#9888;&#65039; Framing correction</h4>
+      <p>LocateAnything-3B (NVIDIA, arXiv&nbsp;2605.27365) is a <strong>Vision-Language grounding model</strong>, marketed as an object detector ("goodbye YOLO"). It answers <em>"where is the thing I described?"</em> with boxes and points. It has <strong>no mask head and produces no pixel-level segmentation</strong>. Everything below is about how it emits <em>coordinates</em>, not masks.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:1.05rem; margin-bottom:.4rem;">Architecture</h3>
+      <div class="pipe">
+        <div class="pipe-node"><span class="pn-t">Image</span><span class="pn-s">native resolution</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-node"><span class="pn-t">Moon-ViT</span><span class="pn-s">vision encoder &middot; visual tokens</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-node"><span class="pn-t">MLP projector</span><span class="pn-s">vision &rarr; language</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-node accent"><span class="pn-t">Qwen2.5</span><span class="pn-s">language decoder</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-node accent"><span class="pn-t">Box / point blocks</span><span class="pn-s">structured output</span></div>
+      </div>
+      <p class="body" style="margin-bottom:0;">A <strong>Moon-ViT</strong> encoder extracts visual tokens at <em>native resolution</em> (preserving fine spatial detail for precise localization), an MLP projector bridges into a <strong>Qwen2.5</strong> language decoder, and the decoder emits localization as a sequence of structured blocks. ~3B parameters, trained on ~12M images / 138M queries / 785M boxes across detection, GUI grounding, OCR, document layout and robotics &mdash; <strong>no microscopy or EM data</strong>.</p>
+    </div>
+
+    <h3 style="font-size:1.05rem; margin:1.6rem 0 .3rem;">Tokenization &mdash; box-aligned atomic blocks</h3>
+    <p class="body">Instead of streaming free-form coordinate tokens, LocateAnything formulates localization as a sequence of <strong>fixed-length, "box-aligned" atomic blocks</strong>. Four functional block types jointly specify each predicted entity or a termination state:</p>
+    <div class="blocks">
+      <div class="blk b-sem"><div class="bt">Semantic</div><p>Identifies the entity / class the block refers to.</p></div>
+      <div class="blk b-box"><div class="bt">Box</div><p>The full coordinate set <code>(x1,y1,x2,y2)</code> &mdash; or a point &mdash; treated as one atomic unit.</p></div>
+      <div class="blk b-neg"><div class="bt">Negative</div><p>Signals the queried object is absent (a true negative).</p></div>
+      <div class="blk b-end"><div class="bt">End</div><p>Termination state that ends the prediction sequence.</p></div>
+    </div>
+
+    <h3 style="font-size:1.05rem; margin:1.6rem 0 .3rem;">Parallel Box Decoding (PBD) &mdash; the headline trick</h3>
+    <p class="body">Classic VLM grounding decodes coordinates <em>autoregressively</em>, one token at a time, which is slow and can chop a box into arbitrary token chunks. PBD instead treats each box as a <strong>constant-length atomic unit and predicts all four coordinates in a single parallel step</strong>. This preserves geometric coherence and boosts throughput dramatically.</p>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Mode</th><th>Decoding</th><th>Trade-off</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Fast</strong> (MTP)</td><td class="mono">multi-token, parallel</td><td>Maximum throughput &mdash; predicts full boxes in one step.</td></tr>
+          <tr><td><strong>Slow</strong> (NTP)</td><td class="mono">next-token, autoregressive</td><td>Maximum stability &mdash; decodes coordinates token-by-token.</td></tr>
+          <tr><td><strong>Hybrid</strong></td><td class="mono">fast &rarr; fallback</td><td>Fast by default; falls back to slow on format irregularity or spatial ambiguity.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout purple">
+      <h4>&#128640; Why it matters</h4>
+      <p>PBD reports <strong>&gt;10&times; faster</strong> decoding than Qwen3-VL and ~2.5&times; faster than Rex-Omni in boxes/second, while improving high-IoU localization quality. The innovation is entirely about <em>fast, coherent coordinate emission</em> &mdash; not about denser or pixel-level outputs.</p>
+    </div>
+  </section>
+
+  <!-- Q2 -->
+  <section class="block reveal">
+    <div class="section-lead">
+      <h2><span class="qtag">Q2</span> Feasible for EM segmentation, like micro-SAM?</h2>
+      <p>Comparing the tools on what EM segmentation actually needs.</p>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th></th><th>micro-SAM</th><th>LocateAnything</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Output</strong></td><td>Dense instance <strong>masks</strong> (pixel-level)</td><td><strong>Boxes + points</strong> only</td></tr>
+          <tr><td><strong>Task</strong></td><td>Promptable + automatic segmentation</td><td>Text-driven grounding &amp; detection</td></tr>
+          <tr><td><strong>Domain</strong></td><td>Fine-tuned on <strong>EM / LM microscopy</strong></td><td>Natural images, GUI, OCR, docs, robotics</td></tr>
+          <tr><td><strong>Prompt</strong></td><td>Point / box / mask &rarr; mask</td><td>Natural-language description &rarr; box</td></tr>
+          <tr><td><strong>Instance density</strong></td><td>Handles hundreds&ndash;thousands per tile</td><td>Tuned for sparse, describable objects</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout amber">
+      <h4>&#129513; Why it's a poor direct fit for EM</h4>
+      <p><strong>1. No masks.</strong> EM segmentation of organelles, membranes, vesicles and cells needs pixel masks; LocateAnything cannot produce them.</p>
+      <p><strong>2. Language-grounded.</strong> You describe an object in text and it points to it. EM structures are densely packed and near-identical &mdash; hard to disambiguate in words. That is the opposite of the sparse, nameable objects grounding models excel at.</p>
+      <p><strong>3. Zero in-domain data.</strong> Its training set contains no microscopy, so zero-shot EM behaviour would be unreliable.</p>
+    </div>
+
+    <div class="callout green">
+      <h4>&#128161; The one narrow role it could play</h4>
+      <p>As a <strong>detection front-end</strong> in a two-stage <em>detect-then-segment</em> pipeline: a detector proposes boxes, which then prompt a SAM-style mask decoder to produce masks. But this would require heavy EM fine-tuning, and micro-SAM / SAM already provide automatic mask generation and interactive box/point prompting <em>in domain</em> &mdash; so the marginal value is low.</p>
+    </div>
+
+    <div class="verdict">
+      <div class="vicon">&#128681;</div>
+      <div class="vbody">
+        <h4>Verdict <span class="badge danger" style="margin-left:.4rem;">Not a replacement</span></h4>
+        <p>LocateAnything is <strong>not feasible as a standalone EM segmentation model</strong> and is not comparable to how micro-SAM is used today. At best it is an optional, out-of-domain box-prompt generator &mdash; and even that role is awkward for dense, hard-to-name EM structures.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Q3 -->
+  <section class="block reveal">
+    <div class="section-lead">
+      <h2><span class="qtag">Q3</span> Does micro-SAM use SAM2 or SAM3?</h2>
+      <p>Neither &mdash; it is built on the original Segment Anything (SAM&nbsp;1).</p>
+    </div>
+
+    <p class="body">micro-SAM builds on the <strong>original SAM (SAM&nbsp;1)</strong>, adding a custom instance-segmentation decoder on top of SAM's backbone. The concrete evidence:</p>
+
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Generation</th><th>Image encoder</th><th>micro-SAM uses it?</th></tr></thead>
+        <tbody>
+          <tr><td><strong>SAM 1</strong> (2023)</td><td class="mono">ViT-T / ViT-B / ViT-L / ViT-H</td><td><span class="badge green">Yes &mdash; shipped backbone</span></td></tr>
+          <tr><td><strong>SAM 2</strong> (2024)</td><td class="mono">Hiera (hierarchical)</td><td><span class="badge microsam">Roadmap / experimental</span></td></tr>
+          <tr><td><strong>SAM 3</strong> (Nov 2025)</td><td class="mono">Meta's newest release</td><td><span class="badge microsam">Roadmap only</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h4>&#128269; How we know it's SAM&nbsp;1</h4>
+      <p>micro-SAM's models are named for SAM's <strong>ViT image encoders</strong> &mdash; <code>vit_t</code>, <code>vit_b</code>, <code>vit_l</code>, <code>vit_h</code>, including EM-specific <code>vit_b_em_organelles</code> / <code>vit_l_em_organelles</code>. Those ViT encoders <em>are</em> the SAM&nbsp;1 architecture. SAM&nbsp;2 replaced them with <strong>Hiera</strong> hierarchical encoders (not ViT-B/L/H), so the encoder naming alone pins micro-SAM to SAM&nbsp;1.</p>
+    </div>
+
+    <div class="callout pink">
+      <h4>&#128204; Consistent with this repo's prior deep dive</h4>
+      <p>The companion <a href="foundation-models-deep-dive.html">micro-SAM vs. SAM2/SAM3 report</a> reached the same conclusion: <em>"the micro-SAM library itself still ships only a SAM1 backbone."</em> SAM2/SAM3 appear on the roadmap, but the default generalist and EM-finetuned models remain SAM&nbsp;1.</p>
+    </div>
+
+    <div class="callout amber">
+      <h4>&#9989; One honesty flag</h4>
+      <p>The live <code>RELEASE_OVERVIEW.md</code> could not be fetched directly during this pass (egress policy + GitHub scope). Every available signal points to SAM&nbsp;1, but for a date-stamped "as of today" guarantee, a 30-second check of micro-SAM's releases page is worth doing.</p>
+    </div>
+  </section>
+
+  <!-- Sources -->
+  <section class="block reveal">
+    <div class="section-lead"><h2>&#128218; Sources</h2></div>
+    <div class="src-group">
+      <ul>
+        <li>NVIDIA &mdash; <a href="https://huggingface.co/nvidia/LocateAnything-3B">LocateAnything-3B model card (Hugging Face)</a></li>
+        <li>NVIDIA Research &mdash; <a href="https://research.nvidia.com/labs/lpr/locate-anything/">LocateAnything: Fast and High-Quality Vision-Language Grounding with Parallel Box Decoding</a></li>
+        <li>arXiv &mdash; <a href="https://arxiv.org/html/2605.27365v1">LocateAnything paper (2605.27365)</a> &middot; <a href="https://www.alphaxiv.org/overview/2605.27365v2">alphaXiv overview</a></li>
+        <li>Computational Cell Analytics &mdash; <a href="https://github.com/computational-cell-analytics/micro-sam">micro-sam (GitHub)</a> &middot; <a href="https://computational-cell-analytics.github.io/micro-sam/micro_sam.html">micro_sam API docs</a></li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<footer class="footer">
+  <p>Compiled July 2026 from NVIDIA / Hugging Face public pages, arXiv preprints, and the micro-SAM project docs. Findings on LocateAnything's outputs and micro-SAM's backbone are corroborated across the cited sources; the live micro-SAM release file could not be fetched at compile time.</p>
+  <p style="margin-top:.6rem;">&#129516; Companion reading: <a href="index.html">3D-segmentation model survey</a> &middot; <a href="foundation-models-deep-dive.html">micro-SAM vs. SAM2/SAM3 deep dive</a></p>
+</footer>
+
+<script>
+const reveals = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('show'); io.unobserve(e.target);} });
+}, {threshold:.08});
+reveals.forEach(r=>io.observe(r));
+</script>
+</body>
+</html>
